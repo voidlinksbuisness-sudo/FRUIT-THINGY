@@ -506,7 +506,7 @@ automationTab:AddToggle("auto_boss_farm",{
     end
 })
 automationTab:AddDropdown("material_target",{
-    Text="Material",Options=MATERIAL_OPTIONS,Default=MATERIAL_OPTIONS[1],MaxVisible=7,Column=1,
+    Text="Material",Options=MATERIAL_OPTIONS,Default=MATERIAL_OPTIONS[1],ShowAllOptions=true,Column=1,
     Callback=function(v) if type(v)=="string" then S.selectedMaterial=v end end
 })
 automationTab:AddToggle("auto_material_farm",{

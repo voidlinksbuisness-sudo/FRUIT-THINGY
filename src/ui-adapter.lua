@@ -10,6 +10,85 @@ do
 
         local controls = {}
 
+        -- Material lists must not inherit the upstream eight-item display cap.
+        local function enableFullDropdowns(window, uiLibrary)
+            local renderDefault = window._renderDropdownOverlay
+            function window:_renderDropdownOverlay(control)
+                if not control or not control.ShowAllOptions then
+                    return renderDefault(self, control)
+                end
+                if not control._boxRect then return end
+                local count = #control.Values
+                if count == 0 then return end
+                local viewportWidth, viewportHeight = 1920, 1080
+                pcall(function()
+                    local viewport = workspace.CurrentCamera.ViewportSize
+                    viewportWidth, viewportHeight = viewport.X, viewport.Y
+                end)
+                local margin = 4
+                local fontSize = uiLibrary.FontSize or 13
+                local itemHeight = math.max(20, fontSize + 8)
+                local rows = math.min(count, math.max(1, math.floor((viewportHeight - 2 * margin - 2) / itemHeight)))
+                local columns = math.ceil(count / rows)
+                local longest = 0
+                for _, value in ipairs(control.Values) do
+                    local text = tostring(value)
+                    longest = math.max(longest, #text + 4)
+                end
+                local columnWidth = math.max(control._boxRect.w, math.ceil(longest * fontSize * 0.55) + 12)
+                columnWidth = math.min(columnWidth, (viewportWidth - 2 * margin - 2) / columns)
+                local width, height = columnWidth * columns + 2, rows * itemHeight + 2
+                local x = math.max(margin, math.min(control._boxRect.x, viewportWidth - margin - width))
+                local below = control._boxRect.y + control._boxRect.h + 1
+                local above = control._boxRect.y - height - 1
+                local y = below
+                if below + height > viewportHeight - margin then
+                    y = above >= margin and above or math.max(margin, viewportHeight - margin - height)
+                end
+                local textSize = math.max(1, math.min(fontSize, math.floor((columnWidth - 12) / (longest * 0.55))))
+                if not control._listPack then
+                    control._listPack = {
+                        Background = self:_draw("Square", {Filled = true, Color = uiLibrary.BackgroundColor, ZIndex = 30}),
+                        Border = self:_draw("Square", {Filled = false, Thickness = 1, Color = uiLibrary.OutlineColor, ZIndex = 31}),
+                        Items = {},
+                    }
+                end
+                local pack = control._listPack
+                control._listRect = {x = x, y = y, w = width, h = height}
+                control._itemRects = {}
+                pack.Background.Position, pack.Background.Size = Vector2.new(x, y), Vector2.new(width, height)
+                pack.Border.Position, pack.Border.Size = Vector2.new(x, y), Vector2.new(width, height)
+                pack.Background.Visible, pack.Border.Visible = true, true
+                for index = 1, count do
+                    local column = math.floor((index - 1) / rows)
+                    local row = (index - 1) % rows
+                    local itemX, itemY = x + 1 + column * columnWidth, y + 1 + row * itemHeight
+                    if not pack.Items[index] then
+                        pack.Items[index] = {
+                            Background = self:_draw("Square", {Filled = true, Color = uiLibrary.BackgroundColor, ZIndex = 32}),
+                            Text = self:_draw("Text", {Color = uiLibrary.FontColor, Outline = true, ZIndex = 33}),
+                        }
+                    end
+                    local item, value = pack.Items[index], control.Values[index]
+                    local selected = control.Multi and control.Value[value] == true or (not control.Multi and control.Value == value)
+                    -- Preserve value indices for the existing click handler and callbacks.
+                    control._itemRects[index] = {x = itemX, y = itemY, w = columnWidth, h = itemHeight}
+                    item.Background.Position, item.Background.Size = Vector2.new(itemX, itemY), Vector2.new(columnWidth, itemHeight)
+                    item.Background.Color = selected and uiLibrary.MainColor or uiLibrary.BackgroundColor
+                    item.Background.Visible = true
+                    item.Text.Text = (selected and "[x] " or "") .. tostring(value)
+                    item.Text.Size = textSize
+                    item.Text.Color = selected and uiLibrary.AccentColor or uiLibrary.FontColor
+                    item.Text.Position = Vector2.new(itemX + 6, itemY + math.floor((itemHeight - textSize) / 2))
+                    item.Text.Visible = true
+                end
+                for index = count + 1, #pack.Items do
+                    pack.Items[index].Background.Visible = false
+                    pack.Items[index].Text.Visible = false
+                end
+            end
+        end
+
         local function roundingFor(step, explicit)
             if tonumber(explicit) then return math.max(0, math.floor(tonumber(explicit))) end
             step = tonumber(step) or 1
@@ -115,6 +194,7 @@ do
                     Callback = info.Callback,
                     Tooltip = info.Description,
                 })
+                dropdown.ShowAllOptions = info.ShowAllOptions == true
                 return enhanceControl(id, dropdown)
             end
 
@@ -210,6 +290,7 @@ do
                 AutoShow = false,
                 Center = true,
             })
+            enableFullDropdowns(raw, adapter.Raw)
             adapter.Raw.Toggled = true
             local page = makeTab(raw:AddTab(info.Title or "Settings"))
             local popup = { Raw = raw }
@@ -244,6 +325,7 @@ do
                 AutoShow = true,
                 Center = true,
             })
+            enableFullDropdowns(raw, self.Raw)
             local window = {
                 Raw = raw,
                 Tabs = {},
