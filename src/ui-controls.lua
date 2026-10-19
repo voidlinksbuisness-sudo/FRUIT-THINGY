@@ -735,7 +735,7 @@ miscTab:AddToggle("fruit_esp", {
 })
 
 miscTab:AddToggle("chest_esp", {
-    Text="Chest ESP", Description="Shows a text label on every spawned chest",
+    Text="Chest ESP", Description="Shows the nearest 128 on-screen chests with batched updates",
     Default=false, Column=1,
     Callback=function(v)
         S.chestEsp=v

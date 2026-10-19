@@ -4,10 +4,17 @@ function clearEspLabels()
 end
 
 function clearChestEspLabels()
-    for _,entry in pairs(S.chestEspLabels) do
-        if entry and entry.label then entry.label.Visible=false end
+    -- Cancel in-flight scans/updates before disposing of their drawing pool.
+    S.chestEspGeneration = (S.chestEspGeneration or 0) + 1
+    S.chestEspScanRunning = false
+    for _, entry in pairs(S.chestEspLabelCache) do
+        if entry and entry.label then
+            pcall(function() entry.label.Visible = false end)
+            pcall(function() entry.label:Remove() end)
+        end
     end
-    S.chestEspLabels={}
+    S.chestEspLabelCache = {}
+    S.chestEspLabels = {}
 end
 
 function clearBerryEspLabels()

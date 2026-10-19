@@ -23,6 +23,10 @@ Features are grouped into state/quest/navigation data, UI adapter and controls, 
 
 The initial split preserved the import byte for byte. The material dropdown now overrides the upstream eight-item cap to show every material, moves above the control when needed, and uses columns on short screens. Other dropdowns use their existing renderer. The assembled-source baseline tracks this intentional fix. This does not bundle the separate external UI library referenced by the original script. The original runtime requirements (`game:HttpGet`, `loadstring`, drawing/input APIs, and the Blox Fruits environment) still apply. The loader additionally uses `HttpService:JSONDecode` to resolve a consistent revision.
 
+## Chest ESP performance
+
+Chest discovery runs in batches of 32 without allocating drawings. Updates use a reusable pool of at most 128 labels for the nearest on-screen chests within the original 10,000-stud range. Extra chests remain tracked and become eligible as the player/camera moves. Updates yield between batches and pause between passes instead of processing every chest each frame. Turning Chest ESP off cancels pending work and removes its drawings.
+
 ## Validation
 
 With Node.js installed:
@@ -33,5 +37,7 @@ npm test
 ```
 
 The integrity check verifies the current assembled-source baseline, manifest order, and compatibility loader. The original import hash remains recorded in the source map. Mocked Lua tests cover source assembly, shared locals and closures, early returns, revision pinning, discarded chunk returns, stale exports, and failed downloads/compilation without executing the game code. Dropdown tests render all thirteen materials against mocked drawing objects and select each using the upstream click handler at desktop and small viewport sizes.
+
+Mocked Chest ESP stress tests cover 2,000 chests, repeated respawns, drawing/projection limits, stale instances, player respawn, and cancellation when toggled off.
 
 Live gameplay has not been tested. Existing game compatibility, timing behavior, and upstream UI availability are unchanged by the source split. When changing feature code intentionally, update the baseline hash and source map as appropriate.

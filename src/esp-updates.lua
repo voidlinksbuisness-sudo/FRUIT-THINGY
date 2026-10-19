@@ -32,34 +32,11 @@ end)
 task.spawn(function()
     while true do
         if S.chestEsp then
-            local char=LocalPlayer.Character
-            local hrp=char and char:FindFirstChild("HumanoidRootPart") or nil
-            local okPlayer,playerPos=pcall(function() return hrp and hrp.Position end)
-            for _,entry in pairs(S.chestEspLabels) do
-                local label=entry and entry.label or nil
-                local part=entry and entry.part or nil
-                local okParent,parent=pcall(function() return part and part.Parent end)
-                local okPos,pos=pcall(function() return part and part.Position end)
-                if label and okPlayer and playerPos and okParent and parent and okPos and pos then
-                    local dx=pos.X-playerPos.X
-                    local dy=pos.Y-playerPos.Y
-                    local dz=pos.Z-playerPos.Z
-                    local distanceSq=dx*dx+dy*dy+dz*dz
-                    if distanceSq<=100000000 then
-                        local okScreen,screenPos,onScreen=pcall(function() return WorldToScreen(pos) end)
-                        label.Visible=okScreen and onScreen or false
-                        if okScreen and onScreen and screenPos then
-                            label.Position=Vector2.new(screenPos.X,screenPos.Y-20)
-                        end
-                    else
-                        label.Visible=false
-                    end
-                elseif label then
-                    label.Visible=false
-                end
-            end
+            -- Discovery and projection yield in small batches; never run every frame.
+            local ok = pcall(updateChestEspLabels)
+            if not ok then clearChestEspLabels() end
         end
-        task.wait()
+        task.wait(0.1)
     end
 end)
 
@@ -132,8 +109,7 @@ task.spawn(function()
         task.wait(2)
         if S.fruitEsp then buildEspLabels(); buildChamBoxes() end
         if S.chestEsp then
-            local chestModels=game.Workspace:FindFirstChild("ChestModels")
-            if trackedFolderChanged("chests",chestModels) then buildChestEspLabels() end
+            buildChestEspLabels()
         end
         if S.boatEsp then
             local boats=game.Workspace:FindFirstChild("Boats")

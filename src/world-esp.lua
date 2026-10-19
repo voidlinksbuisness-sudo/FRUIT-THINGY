@@ -42,52 +42,96 @@ local function trackedFlowersChanged()
     return trackedSetChanged("flowers",current)
 end
 
+-- Chest discovery holds metadata only; drawings are a bounded reusable pool.
+local CHEST_SCAN_BATCH = 32
+local CHEST_LABEL_LIMIT = 128
+local CHEST_DISTANCE_SQ = 100000000
+
 function buildChestEspLabels()
-    for _,entry in pairs(S.chestEspLabelCache) do
-        if entry and entry.label then entry.label.Visible=false end
-    end
-    S.chestEspLabels={}
-
-    local chestModels=game.Workspace:FindFirstChild("ChestModels")
-    if not chestModels then return end
-    local okChildren,children=pcall(function() return chestModels:GetChildren() end)
-    if not okChildren or not children then return end
-
-    for _,chest in pairs(children) do
-        local part=chest and (chest:FindFirstChild("RootPart") or chest:FindFirstChildOfClass("BasePart")) or nil
-        local okPos,pos=pcall(function() return part and part.Position end)
-        if okPos and pos and pos.X and pos.Y and pos.Z then
-            local key=getFruitInstanceKey(part)
-            local okName,chestName=pcall(function() return chest.Name end)
-            chestName=(okName and chestName and chestName~="") and chestName or "Chest"
-            local chestColor=Color3.fromRGB(235,235,235)
-            if chestName=="SilverChest" then
-                chestColor=Color3.fromRGB(165,165,165)
-            elseif chestName=="GoldChest" then
-                chestColor=Color3.fromRGB(255,215,55)
-            elseif chestName=="DiamondChest" then
-                chestColor=Color3.fromRGB(85,205,255)
+    if not S.chestEsp or S.chestEspScanRunning then return end
+    S.chestEspGeneration = S.chestEspGeneration or 0
+    local generation = S.chestEspGeneration
+    S.chestEspScanRunning = true
+    task.spawn(function()
+        local ok = pcall(function()
+            local chestModels = game.Workspace:FindFirstChild("ChestModels")
+            local children = chestModels and chestModels:GetChildren() or {}
+            local entries = {}
+            for index, chest in ipairs(children) do
+                if not S.chestEsp or S.chestEspGeneration ~= generation then return end
+                local valid, part, chestName = pcall(function()
+                    return chest:FindFirstChild("RootPart") or chest:FindFirstChildOfClass("BasePart"), chest.Name
+                end)
+                if valid and part then
+                    chestName = type(chestName) == "string" and chestName ~= "" and chestName or "Chest"
+                    local color = Color3.fromRGB(235,235,235)
+                    if chestName == "SilverChest" then color = Color3.fromRGB(165,165,165)
+                    elseif chestName == "GoldChest" then color = Color3.fromRGB(255,215,55)
+                    elseif chestName == "DiamondChest" then color = Color3.fromRGB(85,205,255) end
+                    entries[#entries + 1] = {part = part, name = chestName, color = color}
+                end
+                if index % CHEST_SCAN_BATCH == 0 then task.wait(0.01) end
             end
-            if not S.chestEspLabelCache[key] then
-                local label=Drawing.new("Text")
-                label.Text=chestName
-                label.Position=Vector2.new(0,0)
-                label.Color=chestColor
-                label.Size=14
-                label.Outline=true
-                label.Visible=false
-                label.ZIndex=10
-                label.Font=Drawing.Fonts.Monospace
-                label.Center=true
-                S.chestEspLabelCache[key]={label=label,part=part,name=chestName}
-            else
-                S.chestEspLabelCache[key].part=part
-                S.chestEspLabelCache[key].name=chestName
-                S.chestEspLabelCache[key].label.Text=chestName
-                S.chestEspLabelCache[key].label.Color=chestColor
-            end
-            table.insert(S.chestEspLabels,S.chestEspLabelCache[key])
+            if S.chestEsp and S.chestEspGeneration == generation then S.chestEspLabels = entries end
+        end)
+        if S.chestEspGeneration == generation then
+            S.chestEspScanRunning = false
+            if not ok then S.chestEspLabels = {} end
         end
+    end)
+end
+
+function updateChestEspLabels()
+    if not S.chestEsp then return end
+    local generation = S.chestEspGeneration or 0
+    local character = LocalPlayer and LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local okPlayer, playerPosition = pcall(function() return root and root.Position end)
+    local candidates = {}
+    if okPlayer and playerPosition then
+        local entries = S.chestEspLabels
+        for index, entry in ipairs(entries) do
+            if not S.chestEsp or (S.chestEspGeneration or 0) ~= generation then return end
+            local valid, position = pcall(function()
+                if entry.part and entry.part.Parent then return entry.part.Position end
+            end)
+            if valid and position then
+                local dx, dy, dz = position.X-playerPosition.X, position.Y-playerPosition.Y, position.Z-playerPosition.Z
+                local distance = dx*dx + dy*dy + dz*dz
+                if distance <= CHEST_DISTANCE_SQ then
+                    local okScreen, screen, onScreen = pcall(function() return WorldToScreen(position) end)
+                    if okScreen and screen and onScreen then
+                        candidates[#candidates + 1] = {entry = entry, distance = distance, screen = screen}
+                    end
+                end
+            end
+            if index % CHEST_SCAN_BATCH == 0 then task.wait(0.01) end
+        end
+    end
+    if not S.chestEsp or (S.chestEspGeneration or 0) ~= generation then return end
+    table.sort(candidates, function(a,b) return a.distance < b.distance end)
+    local count = math.min(CHEST_LABEL_LIMIT, #candidates)
+    for index = 1, count do
+        if not S.chestEsp or (S.chestEspGeneration or 0) ~= generation then return end
+        local candidate = candidates[index]
+        local cached = S.chestEspLabelCache[index]
+        if not cached then
+            local label = Drawing.new("Text")
+            label.Size, label.Outline, label.ZIndex = 14, true, 10
+            label.Font, label.Center, label.Visible = Drawing.Fonts.Monospace, true, false
+            cached = {label = label}
+            S.chestEspLabelCache[index] = cached
+        end
+        local label, entry = cached.label, candidate.entry
+        if cached.name ~= entry.name then label.Text = entry.name; cached.name = entry.name end
+        if cached.color ~= entry.color then label.Color = entry.color; cached.color = entry.color end
+        label.Position = Vector2.new(candidate.screen.X, candidate.screen.Y - 20)
+        if not cached.visible then label.Visible = true; cached.visible = true end
+        if index % 16 == 0 then task.wait(0.01) end
+    end
+    for index = count + 1, #S.chestEspLabelCache do
+        local cached = S.chestEspLabelCache[index]
+        if cached.visible then cached.label.Visible = false; cached.visible = false end
     end
 end
 
