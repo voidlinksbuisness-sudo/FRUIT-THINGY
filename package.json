@@ -1,0 +1,10 @@
+{
+  "name": "fruit-thingy",
+  "private": true,
+  "scripts": {
+    "test": "node tests/integrity.cjs && node tests/loader.cjs"
+  },
+  "devDependencies": {
+    "fengari": "0.1.5"
+  }
+}

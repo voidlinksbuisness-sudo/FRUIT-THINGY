@@ -1,0 +1,136 @@
+{
+  "originalBlobSha": "675b8259106a23f21efdebed1f7986563fb66cf2",
+  "originalCommit": "ec0e0e122d540150ff2a090628165ab43723a84f",
+  "modules": [
+    {
+      "path": "src/state.lua",
+      "originalStartLine": 1,
+      "originalEndLine": 145
+    },
+    {
+      "path": "src/quest-data.lua",
+      "originalStartLine": 146,
+      "originalEndLine": 420
+    },
+    {
+      "path": "src/navigation-data.lua",
+      "originalStartLine": 421,
+      "originalEndLine": 451
+    },
+    {
+      "path": "src/ui-adapter.lua",
+      "originalStartLine": 452,
+      "originalEndLine": 885
+    },
+    {
+      "path": "src/ui-controls.lua",
+      "originalStartLine": 886,
+      "originalEndLine": 1750
+    },
+    {
+      "path": "src/boat-seats-and-collectibles.lua",
+      "originalStartLine": 1751,
+      "originalEndLine": 2051
+    },
+    {
+      "path": "src/settings-popups.lua",
+      "originalStartLine": 2052,
+      "originalEndLine": 2263
+    },
+    {
+      "path": "src/boat-movement.lua",
+      "originalStartLine": 2264,
+      "originalEndLine": 2341
+    },
+    {
+      "path": "src/fruit-and-berry-esp.lua",
+      "originalStartLine": 2342,
+      "originalEndLine": 2693
+    },
+    {
+      "path": "src/movement.lua",
+      "originalStartLine": 2694,
+      "originalEndLine": 2735
+    },
+    {
+      "path": "src/world-esp.lua",
+      "originalStartLine": 2736,
+      "originalEndLine": 3080
+    },
+    {
+      "path": "src/combat.lua",
+      "originalStartLine": 3081,
+      "originalEndLine": 3268
+    },
+    {
+      "path": "src/dungeon.lua",
+      "originalStartLine": 3269,
+      "originalEndLine": 3494
+    },
+    {
+      "path": "src/collection-and-farming.lua",
+      "originalStartLine": 3495,
+      "originalEndLine": 3851
+    },
+    {
+      "path": "src/level-farming.lua",
+      "originalStartLine": 3852,
+      "originalEndLine": 4347
+    },
+    {
+      "path": "src/esp-updates.lua",
+      "originalStartLine": 4348,
+      "originalEndLine": 4527
+    },
+    {
+      "path": "src/pull-and-farm-loops.lua",
+      "originalStartLine": 4528,
+      "originalEndLine": 4961
+    },
+    {
+      "path": "src/pvp-farming.lua",
+      "originalStartLine": 4962,
+      "originalEndLine": 5072
+    },
+    {
+      "path": "src/enemy-aura.lua",
+      "originalStartLine": 5073,
+      "originalEndLine": 5194
+    },
+    {
+      "path": "src/pvp-aura.lua",
+      "originalStartLine": 5195,
+      "originalEndLine": 5264
+    },
+    {
+      "path": "src/fishing.lua",
+      "originalStartLine": 5265,
+      "originalEndLine": 5497
+    },
+    {
+      "path": "src/repair.lua",
+      "originalStartLine": 5498,
+      "originalEndLine": 5558
+    },
+    {
+      "path": "src/mastery.lua",
+      "originalStartLine": 5559,
+      "originalEndLine": 5703
+    },
+    {
+      "path": "src/velocity-and-keybinds.lua",
+      "originalStartLine": 5704,
+      "originalEndLine": 6054
+    },
+    {
+      "path": "src/world-and-automation.lua",
+      "originalStartLine": 6055,
+      "originalEndLine": 6460
+    },
+    {
+      "path": "src/keepalive.lua",
+      "originalStartLine": 6461,
+      "originalEndLine": 6462
+    }
+  ]
+}
