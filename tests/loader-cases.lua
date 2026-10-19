@@ -8,9 +8,13 @@ local revision = string.rep("a", 40)
 local base = "https://raw.githubusercontent.com/voidlinksbuisness-sudo/FRUIT-THINGY/" .. revision .. "/"
 local api = "https://api.github.com/repos/voidlinksbuisness-sudo/FRUIT-THINGY/commits/main"
 local responses, requests, started, assembled, mode, badRevision
+local dropMainReturns, exports
 
 local function reset()
     responses, requests = {}, {}
+    dropMainReturns, exports = false, nil
+    getgenv = nil
+    _G.FRUIT_THINGY_MAIN = nil
     started, assembled, mode, badRevision = false, nil, "capture", nil
     responses[api] = "metadata"
     responses[base .. "main.lua"] = mainSource
@@ -42,7 +46,11 @@ function loadstring(source, name)
             return nil, "fixture syntax error"
         end
     end
-    return nativeLoad(source, name)
+    local chunk, compileError = nativeLoad(source, name)
+    if chunk and name == "@FRUIT-THINGY/main.lua" and dropMainReturns then
+        return function() chunk() end
+    end
+    return chunk, compileError
 end
 
 local function runMain()
@@ -136,3 +144,34 @@ for i, path in ipairs(paths) do
 end
 assert(runLoader() == "feature-runtime")
 assert(assembled == originalSource and offset == #originalSource + 1)
+
+-- Matcha-style loadstring execution discards the main chunk's returned runner.
+reset()
+dropMainReturns = true
+assert(runLoader() == "feature-runtime")
+assert(started and _G.FRUIT_THINGY_MAIN == nil)
+
+-- Also support a shared getgenv table distinct from _G.
+reset()
+dropMainReturns = true
+exports = {}
+getgenv = function() return exports end
+assert(runLoader() == "feature-runtime")
+assert(started and exports.FRUIT_THINGY_MAIN == nil)
+
+-- Never run a stale export left by an older launch if main is invalid.
+reset()
+_G.FRUIT_THINGY_MAIN = function() error("stale runner executed") end
+responses[base .. "main.lua"] = "return 42"
+local success, message = pcall(runLoader)
+assert(not success and tostring(message):find("main did not provide a runner", 1, true))
+assert(not started and _G.FRUIT_THINGY_MAIN == nil)
+
+-- Matcha may log error() without throwing; invalid main still must not call nil.
+reset()
+responses[base .. "main.lua"] = "return 42"
+local nativeError, logged = error, nil
+error = function(message) logged = message end
+local safe = pcall(runLoader)
+error = nativeError
+assert(safe and logged == "FRUIT-THINGY main did not provide a runner" and not started)

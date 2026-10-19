@@ -30,7 +30,7 @@ local modules = {
     "src/keepalive.lua",
 }
 
-return function(baseUrl)
+local function run(baseUrl)
     assert(type(baseUrl) == "string" and baseUrl:sub(-1) == "/", "FRUIT-THINGY needs a revision base URL")
     local sources = {}
     -- Download every module before starting any feature.
@@ -46,3 +46,9 @@ return function(baseUrl)
     if not runtime then error("FRUIT-THINGY runtime compile failed: " .. tostring(compileError), 0) end
     return runtime()
 end
+
+-- Matcha can discard return values from loadstring chunks. Publish the same
+-- runner through the shared environment as well as returning it.
+local environment = (type(getgenv) == "function" and getgenv()) or _G
+if type(environment) == "table" then environment.FRUIT_THINGY_MAIN = run end
+return run

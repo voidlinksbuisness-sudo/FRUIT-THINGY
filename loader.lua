@@ -22,6 +22,13 @@ end
 local baseUrl = "https://raw.githubusercontent.com/" .. repository .. "/" .. revision .. "/"
 local main, compileError = loadstring(fetch(baseUrl .. "main.lua"), "@FRUIT-THINGY/main.lua")
 if not main then error("FRUIT-THINGY main compile failed: " .. tostring(compileError), 0) end
+-- Clear stale exports before executing a fresh copy of main.
+local environment = (type(getgenv) == "function" and getgenv()) or _G
+if type(environment) == "table" then environment.FRUIT_THINGY_MAIN = nil end
 local run = main()
-if type(run) ~= "function" then error("FRUIT-THINGY main did not return a runner", 0) end
-return run(baseUrl)
+if type(run) ~= "function" and type(environment) == "table" then
+    run = environment.FRUIT_THINGY_MAIN
+end
+if type(environment) == "table" then environment.FRUIT_THINGY_MAIN = nil end
+if type(run) == "function" then return run(baseUrl) end
+error("FRUIT-THINGY main did not provide a runner", 0)

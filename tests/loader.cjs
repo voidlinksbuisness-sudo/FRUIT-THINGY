@@ -15,4 +15,4 @@ const tests = fs.readFileSync(path.join(__dirname, "loader-cases.lua"), "utf8");
 if (lauxlib.luaL_dostring(L, to_luastring(tests)) !== lua.LUA_OK) {
     throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
 }
-console.log("PASS: loader/main assembly, shared locals, closures, early return, revision pinning, and failure handling.");
+console.log("PASS: loader/main assembly, shared locals, closures, early return, revision pinning, discarded chunk returns, shared exports, and failure handling.");
