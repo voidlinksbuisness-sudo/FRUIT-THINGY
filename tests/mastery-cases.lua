@@ -82,3 +82,21 @@ farmAttack({Position={X=0,Y=0,Z=0}},function() return running end,nil,true,1000,
  attacks=attacks+1;running=false
 end,0,{syncAttack=true})
 assert(attacks==1,'Synchronous callback did not receive nearest NPC')
+
+-- Only Gun mastery weakens enemies with melee, switching at exactly 20%.
+local stats={Health=100,MaxHealth=100}
+local target={FindFirstChildOfClass=function() return stats end}
+assert(_TEST.attackWeapon("Gun",target)=="Melee")
+stats.Health=20.01
+assert(_TEST.attackWeapon("Gun",target)=="Melee")
+stats.Health=20
+assert(_TEST.attackWeapon("Gun",target)=="Gun")
+stats.Health=5
+assert(_TEST.attackWeapon("Gun",target)=="Gun")
+for _,kind in ipairs({"Sword","Melee"}) do
+ stats.Health=100;assert(_TEST.attackWeapon(kind,target)==kind)
+ stats.Health=10;assert(_TEST.attackWeapon(kind,target)==kind)
+end
+stats.MaxHealth=0;assert(_TEST.attackWeapon("Gun",target)=="Gun")
+stats.MaxHealth=nil;assert(_TEST.attackWeapon("Gun",target)=="Gun")
+assert(_TEST.attackWeapon("Gun",{FindFirstChildOfClass=function() error("unsupported") end})=="Gun")
