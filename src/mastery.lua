@@ -38,6 +38,17 @@ do
         end
         return nil
     end
+    local function attackWeapon(kind,enemy)
+        if kind~="Gun" then return kind end
+        local ok,health,maxHealth=pcall(function()
+            local hum=enemy:FindFirstChildOfClass("Humanoid")
+            return hum and hum.Health,hum and hum.MaxHealth
+        end)
+        -- If health cannot be read, use the gun rather than risk a melee kill.
+        if ok and type(health)=="number" and type(maxHealth)=="number"
+            and maxHealth>0 and health>maxHealth*0.2 then return "Melee" end
+        return "Gun"
+    end
     local function aim(part)
         local pos=getSafeFruitPosition(part)
         if not pos then return false end
@@ -89,7 +100,7 @@ do
                     end
                     return
                 end
-                if not equip(kind,active) then
+                if kind~="Gun" and not equip(kind,active) then
                     if os.clock()-lastWarning>5 then
                         lastWarning=os.clock()
                         notify("Auto Mastery: put your "..kind.." in hotbar slot "..slot.." or change Mastery Hotbar Slot","laced.club",3)
@@ -98,9 +109,18 @@ do
                 end
                 farmAttack(hrp,active,nil,true,1000,function(enemy,part)
                     if not active() or not isAlive(enemy) then return end
-                    if not equip(kind,active) then return end
+                    local weapon=attackWeapon(kind,enemy)
+                    if not equip(weapon,active) then
+                        if os.clock()-lastWarning>5 then
+                            lastWarning=os.clock()
+                            notify("Auto Mastery: put your "..weapon.." in hotbar slot "..S.masterySlots[weapon],"laced.club",3)
+                        end
+                        return
+                    end
+                    -- Equipping yields: health may cross the threshold during the switch.
+                    if not active() or not isAlive(enemy) or attackWeapon(kind,enemy)~=weapon then return end
                     setrobloxinput(true)
-                    if kind=="Gun" then
+                    if weapon=="Gun" then
                         local target=enemy:FindFirstChild("Head") or part
                         if not aim(target) then return end
                         task.wait(0.02)
