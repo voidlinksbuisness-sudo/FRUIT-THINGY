@@ -1,4 +1,6 @@
-task={spawn=function() end,wait=function() end}
+local clock=0
+os.clock=function() return clock end
+task={spawn=function() end,wait=function(dt) clock=clock+(dt or 0.01) end}
 local held=nil
 local melee={ToolTip='Melee',IsA=function() return true end}
 local sword={ToolTip='Sword',IsA=function() return true end}
@@ -8,6 +10,17 @@ local humanoid={EquipTool=function(_,tool) held=tool end}
 local char={FindFirstChildOfClass=function() return humanoid end}
 LocalPlayer={Character=char,FindFirstChild=function() return backpack end}
 function getCurrentlyHeldTool() return held end
+function trackedInstanceKey(object) return tostring(object.Address or object) end
+S={masterySlots={Melee=1,Sword=3,Gun=4}}
+local slots={[1]=melee,[3]=sword,[4]=gun}
+local presses=0
+function setrobloxinput() end
+function keyrelease() end
+function keypress(key)
+ presses=presses+1
+ local tool=slots[key-0x30]
+ held=held==tool and nil or tool
+end
 function getSafeFruitPosition(p) return p and p.Position end
 local moved,turned=false,false
 local onscreen=true
@@ -23,8 +36,21 @@ for _,kind in ipairs({'Melee','Sword','Gun'}) do
 end
 held=melee
 assert(not _TEST.matches(held,'Gun'))
-backpack.GetChildren=function() return {melee} end
+slots[4]=melee
 assert(_TEST.equip('Gun',function() return true end)==nil)
+-- External Matcha instances can throw on ToolTip and lack EquipTool.
+local external=setmetatable({Address=42,IsA=function() return true end},{__index=function(_,key)
+ if key=='ToolTip' then error('unsupported property') end
+end})
+slots[4]=external;held=nil
+assert(_TEST.equip('Gun',function() return true end)==external)
+local before=presses
+assert(_TEST.equip('Gun',function() return true end)==external and presses==before)
+S.masterySlots.Gun=5;slots[5]=gun
+assert(_TEST.equip('Gun',function() return true end)==gun and presses>before)
+held=nil;before=presses
+assert(_TEST.equip('Gun',function() return false end)==nil and presses==before)
+
 assert(_TEST.aim({Position={}}) and moved)
 onscreen=false;moved=false
 assert(_TEST.aim({Position={}}) and turned and moved)

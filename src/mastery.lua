@@ -6,24 +6,35 @@ do
         end)
         return ok and type(value)=="string" and string.lower(value)==string.lower(kind)
     end
+    local equippedKey,equippedKind,equippedSlot=nil,nil,nil
     local function equip(kind,check)
+        local slot=S.masterySlots[kind]
         local held=getCurrentlyHeldTool()
-        if matches(held,kind) then return held end
-        local char=LocalPlayer.Character
-        local backpack=LocalPlayer:FindFirstChild("Backpack")
-        if not char or not backpack then return nil end
-        for _,tool in pairs(backpack:GetChildren()) do
-            if matches(tool,kind) then
-                local hum=char:FindFirstChildOfClass("Humanoid")
-                if hum then pcall(function() hum:EquipTool(tool) end) end
-                if not matches(getCurrentlyHeldTool(),kind) then
-                    pcall(function() tool.Parent=char end)
+        if held and (matches(held,kind) or (equippedKind==kind and equippedSlot==slot
+            and equippedKey==trackedInstanceKey(held))) then return held end
+        -- Matcha supports keyboard input; ToolTip, EquipTool and Parent writes
+        -- are deliberately not required. The configured hotbar slot is authoritative.
+        for attempt=1,2 do
+            if not check() then return nil end
+            local key=0x30+slot
+            setrobloxinput(true)
+            keyrelease(key)
+            keypress(key)
+            task.wait(0.08)
+            keyrelease(key)
+            local started=os.clock()
+            repeat
+                if not check() then return nil end
+                held=getCurrentlyHeldTool()
+                if held then
+                    local ok,tip=pcall(function() return held.ToolTip end)
+                    if not ok or type(tip)~="string" or tip=="" or matches(held,kind) then
+                        equippedKey,equippedKind,equippedSlot=trackedInstanceKey(held),kind,slot
+                        return held
+                    end
                 end
-                if check() and matches(getCurrentlyHeldTool(),kind) then
-                    return getCurrentlyHeldTool()
-                end
-                return nil
-            end
+                task.wait(0.05)
+            until os.clock()-started>=0.4
         end
         return nil
     end
@@ -48,16 +59,40 @@ do
                 local char=LocalPlayer.Character
                 local hrp=char and char:FindFirstChild("HumanoidRootPart")
                 local kind=S.masteryWeapon
+                local slot=S.masterySlots[kind]
                 local function active()
-                    return S.autoMastery and S.masteryWeapon==kind
+                    return S.autoMastery and S.masteryWeapon==kind and S.masterySlots[kind]==slot
                         and not farmPriorityBlocked(false,true)
-                        and LocalPlayer.Character==char and hrp and hrp.Parent
+                        and LocalPlayer.Character and trackedInstanceKey(LocalPlayer.Character)==trackedInstanceKey(char) and hrp and hrp.Parent
                 end
-                if not active() then return end
+                if not active() then
+                    if S.autoMastery and os.clock()-lastWarning>5 then
+                        lastWarning=os.clock()
+                        notify("Auto Mastery paused: another priority farm is enabled or character is loading","laced.club",3)
+                    end
+                    return
+                end
+                local enemies=game.Workspace:FindFirstChild("Enemies")
+                local nearby=false
+                for _,enemy in pairs(enemies and enemies:GetChildren() or {}) do
+                    local root=enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildOfClass("BasePart")
+                    local pos=getSafeFruitPosition(root)
+                    if pos and isAlive(enemy) then
+                        local dx,dy,dz=pos.X-hrp.Position.X,pos.Y-hrp.Position.Y,pos.Z-hrp.Position.Z
+                        if dx*dx+dy*dy+dz*dz<=1000000 then nearby=true; break end
+                    end
+                end
+                if not nearby then
+                    if os.clock()-lastWarning>5 then
+                        lastWarning=os.clock()
+                        notify("Auto Mastery: no loaded NPC within 1000 studs. Move near enemies first.","laced.club",3)
+                    end
+                    return
+                end
                 if not equip(kind,active) then
                     if os.clock()-lastWarning>5 then
                         lastWarning=os.clock()
-                        notify("Equip a "..kind.." weapon in your backpack for Auto Mastery","laced.club",3)
+                        notify("Auto Mastery: put your "..kind.." in hotbar slot "..slot.." or change Mastery Hotbar Slot","laced.club",3)
                     end
                     return
                 end
