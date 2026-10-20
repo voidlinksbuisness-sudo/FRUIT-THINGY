@@ -56,6 +56,7 @@ S = {
     buddhaPull      = false,
     autoRaid        = false,
     autoMastery     = false,
+    masteryWeapon   = "Melee",
     customPull      = false,
     voidPull        = false,
     skyPull         = false,
@@ -140,8 +141,8 @@ S = {
     lastRaidIslandCount = 0,
 }
 
-function farmPriorityBlocked(ignoreFireFlowers)
-    return (S.autoFireFlowers == true and not ignoreFireFlowers) or S.fruitPriorityActive == true or S.autoDinoBone == true or S.autoBossFarm == true or S.autoMaterialFarm == true
+function farmPriorityBlocked(ignoreFireFlowers,ignoreMastery)
+    return (S.autoMastery == true and not ignoreMastery) or (S.autoFireFlowers == true and not ignoreFireFlowers) or S.fruitPriorityActive == true or S.autoDinoBone == true or S.autoBossFarm == true or S.autoMaterialFarm == true
         or S.autoSeaEvent == true
         or S.dungeonEnabled == true
         or S.autoMirageTween == true or S.autoMirageGear == true

@@ -43,7 +43,7 @@ function isAlive(model)
     return true
 end
 
-function farmAttack(hrp, checkFn, enemyName, useTween, maxDistance, attackFn, attackDelay)
+function farmAttack(hrp, checkFn, enemyName, useTween, maxDistance, attackFn, attackDelay, options)
     local attackRange=maxDistance or 500
     local folder=game.Workspace:FindFirstChild("Enemies")
     if not folder then return end
@@ -100,18 +100,20 @@ function farmAttack(hrp, checkFn, enemyName, useTween, maxDistance, attackFn, at
             local ox,oy,oz=getNormalFarmOffsets()
             local targetPos=Vector3.new(tr.Position.X+ox, tr.Position.Y+oy, tr.Position.Z+oz)
             if useTween and not reachedNpc then
-                tweenTo(hrp,targetPos,S.FARM_SPEED,function() return checkFn() and isAlive(nearest) end)
+                tweenTo(hrp,targetPos,(options and options.speed) or S.FARM_SPEED,function() return checkFn() and isAlive(nearest) end)
                 reachedNpc=true
             else
                 hardLockNpcCFrame(hrp,targetPos)
             end
         end
+        if not checkFn() or not isAlive(nearest) then break end
         local now=os.clock()
         if now-lastClick>=hitDelay then
             lastClick=now
             if attackFn then
 
-                task.spawn(attackFn)
+                if options and options.syncAttack then attackFn(nearest,tr)
+                else task.spawn(attackFn,nearest,tr) end
             else
                 mouse1click()
             end
