@@ -20,6 +20,8 @@ S = {
     fruitPriorityActive = false,
     autoDinoBone    = false,
     autoFarmNearest = false,
+    autoFireFlowers = false,
+    fireFlowerEsp = false,
     autoNpcFarm     = false,
     autoFarmLevel   = false,
     autoFish        = false,
@@ -138,8 +140,8 @@ S = {
     lastRaidIslandCount = 0,
 }
 
-function farmPriorityBlocked()
-    return S.fruitPriorityActive == true or S.autoDinoBone == true or S.autoBossFarm == true or S.autoMaterialFarm == true
+function farmPriorityBlocked(ignoreFireFlowers)
+    return (S.autoFireFlowers == true and not ignoreFireFlowers) or S.fruitPriorityActive == true or S.autoDinoBone == true or S.autoBossFarm == true or S.autoMaterialFarm == true
         or S.autoSeaEvent == true
         or S.dungeonEnabled == true
         or S.autoMirageTween == true or S.autoMirageGear == true

@@ -570,6 +570,15 @@ end)
 
 mainTab:AddSection("Farming", { Column = 1 })
 
+mainTab:AddToggle("auto_fire_flowers", {
+    Text="Auto Farm Fire Flowers", Description="Kills nearest NPCs and collects spawned FireFlowers with E",
+    Default=false, Column=1, Callback=function(v) S.autoFireFlowers=v end
+})
+miscTab:AddToggle("fire_flower_esp", {
+    Text="Fire Flower ESP", Description="Labels spawned FireFlowers with distance",
+    Default=false, Column=1, Callback=function(v) S.fireFlowerEsp=v end
+})
+
 mainTab:AddToggle("auto_farm_nearest", {
     Text="Auto Farm Nearest", Description="Farms the nearest enemy (load chests/enemies first!)",
     Default=false, Keybind=true, Column=1,
