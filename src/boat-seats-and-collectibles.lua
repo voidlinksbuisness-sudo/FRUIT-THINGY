@@ -262,8 +262,15 @@ mainTab:AddToggle("auto_raid", {
     end
 })
 
+mainTab:AddSection("Auto Mastery", { Column = 2 })
+mainTab:AddDropdown("mastery_weapon", {
+    Text="Mastery Weapon", Options={"Melee","Sword","Gun"}, Default="Melee", Column=2,
+    Callback=function(v)
+        if v=="Melee" or v=="Sword" or v=="Gun" then S.masteryWeapon=v end
+    end
+})
 mainTab:AddToggle("auto_mastery", {
-    Text="Auto Mastery", Description="Goto ChocolateIsland And use buddha transformation",
+    Text="Auto Mastery", Description="Farms nearest NPCs with the selected weapon; aims guns at the NPC",
     Default=false, Keybind=true, Column=2,
     Callback=function(v)
         S.autoMastery=v

@@ -2,7 +2,7 @@
 local nativeLoad = load
 local paths = {}
 for path in mainSource:gmatch('"(src/[^"]+%.lua)"') do paths[#paths + 1] = path end
-assert(#paths == 26)
+assert(#paths == 27)
 
 local revision = string.rep("a", 40)
 local base = "https://raw.githubusercontent.com/voidlinksbuisness-sudo/FRUIT-THINGY/" .. revision .. "/"
