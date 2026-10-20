@@ -1,0 +1,12 @@
+{
+  "upstream": "https://github.com/neaxusxgod-png/INS-ui/blob/506859d3787450b6296254b1bb05a9c6d77ebeb2/uilib.min.lua",
+  "referenceGui": "https://github.com/voidlinksbuisness-sudo/scripts/blob/main/fftm_main.lua",
+  "referenceGuiBlobSha": "998ea8b5bc95746a5626b94ec1ec9375b74a779b",
+  "localBlobSha": "d42e3c357b93ca2b8b3f9b957d6d5f0aeb72cb32",
+  "patches": [
+    "Use the reference GUI's cached, contained 2:1 background sizing.",
+    "Expose selected-tab navigation for auxiliary settings pages in INS's single window.",
+    "Expand material dropdown height when it fits, retaining native search and scrolling on short screens.",
+    "Normalize redundant slash escaping and escape the Windows path separator for portable Lua parsing."
+  ]
+}

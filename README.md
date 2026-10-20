@@ -1,6 +1,6 @@
 # FRUIT THINGY
 
-The imported Blox Fruits script is split into 26 feature source files.
+Blox Fruits features split into 26 source modules, using the INS GUI from the `voidlinksbuisness-sudo/scripts` project's `fftm_main.lua`.
 
 ## Start
 
@@ -8,36 +8,37 @@ The imported Blox Fruits script is split into 26 feature source files.
 loadstring(game:HttpGet("https://raw.githubusercontent.com/voidlinksbuisness-sudo/FRUIT-THINGY/main/loader.lua"))()
 ```
 
-The original `blox fruits` URL also remains an entry point and runs the same loader.
+The original `blox fruits` path remains a compatibility entry point. The loader resolves a main-branch commit once, so main, feature modules, and the GUI library use the same revision. Matcha's discarded chunk return values are supported through shared exports.
 
-## How the files work together
+## Interface
 
-- `loader.lua` resolves the current main commit, downloads `main.lua`, and passes its revision URL to the main runner.
-- Matcha compatibility: main also exports its runner through the shared environment when loaded-chunk return values are discarded. The loader clears that temporary export after handoff.
-- `main.lua` lists and downloads the feature files under `src/` in their original order. Every file is fetched from that same commit. Download or compilation errors stop startup with the failing file identified.
-- The source files are concatenated and compiled together. This deliberately keeps original local variables, captured callbacks, early returns, and initialization order intact. They are source modules, not independent `require` modules.
-- `blox fruits` is a compatibility copy of the loader; it no longer contains feature code.
-- `source-map.json` records each feature file's original line range and the original Git blob hash.
+The interface uses the reference script's INS sidebar, two-column cards, background image, search, keybind overlay, and native settings. Press **End** to show or hide the menu. Existing tabs and feature controls retain their callbacks and IDs, including Auto V4 and the Chest ESP performance fix.
 
-Features are grouped into state/quest/navigation data, UI adapter and controls, boat seats and movement, collectibles, settings, fruit/berry/world ESP, combat, dungeons, collection/farming, level farming, ESP updates, pull loops, PvP/enemy auras, fishing, repair, mastery, velocity/keybinds, world automation, and keepalive.
+Tween and boost settings open as auxiliary pages within the same INS window. Their Close buttons return to the previous tab. Material choices use the full list when it fits; smaller screens retain every choice through native dropdown search and scrolling.
 
-The initial split preserved the import byte for byte. The material dropdown now overrides the upstream eight-item cap to show every material, moves above the control when needed, and uses columns on short screens. Other dropdowns use their existing renderer. The assembled-source baseline tracks this intentional fix. This does not bundle the separate external UI library referenced by the original script. The original runtime requirements (`game:HttpGet`, `loadstring`, drawing/input APIs, and the Blox Fruits environment) still apply. The loader additionally uses `HttpService:JSONDecode` to resolve a consistent revision.
+The **Profiles** tab saves and loads the existing version-4 feature profiles from `laced_club_configs`. The native settings gear controls the GUI appearance and input preferences separately.
+
+## Structure
+
+- `loader.lua`: revision resolution and Matcha-compatible handoff.
+- `main.lua`: downloads and assembles the ordered feature source modules in a single lexical scope.
+- `src/ui-adapter.lua`: translates the existing feature controls to INS controls, including scalar dropdowns, multi-selection maps, priority lists, keybinds, configuration, and settings-page navigation.
+- `lib/ins-ui.lua`: pinned copy of the same INS library referenced by the supplied GUI, with small local compatibility/layout fixes recorded in `lib/ins-ui.source.json`.
+- `source-map.json`: original import line ranges and current assembled-feature baseline.
+
+The background image remains referenced from the immutable asset URL used by the supplied GUI. Background resizing uses the cached image; it does not request a replacement image on each resize.
 
 ## Chest ESP performance
 
-Chest discovery runs in batches of 32 without allocating drawings. Updates use a reusable pool of at most 128 labels for the nearest on-screen chests within the original 10,000-stud range. Extra chests remain tracked and become eligible as the player/camera moves. Updates yield between batches and pause between passes instead of processing every chest each frame. Turning Chest ESP off cancels pending work and removes its drawings.
+Chest discovery yields in batches of 32 and holds metadata only. Updates reuse at most 128 labels for the nearest on-screen chests within the original 10,000-stud range. Extra chests remain tracked as the player and camera move. Disabling the feature cancels pending work and removes its drawings.
 
 ## Validation
-
-With Node.js installed:
 
 ```sh
 npm install
 npm test
 ```
 
-The integrity check verifies the current assembled-source baseline, manifest order, and compatibility loader. The original import hash remains recorded in the source map. Mocked Lua tests cover source assembly, shared locals and closures, early returns, revision pinning, discarded chunk returns, stale exports, and failed downloads/compilation without executing the game code. Dropdown tests render all thirteen materials against mocked drawing objects and select each using the upstream click handler at desktop and small viewport sizes.
+Tests verify the assembled-feature baseline, loader and Matcha handoff, material dropdown access/layout, Chest ESP limits/cancellation, and integration with the actual INS library's constructors under mocked host services. GUI integration checks existing controls, callback values, attached keybinds, slider updates, priority swaps, feature profile round-trips, auxiliary settings navigation, and discarded library returns.
 
-Mocked Chest ESP stress tests cover 2,000 chests, repeated respawns, drawing/projection limits, stale instances, player respawn, and cancellation when toggled off.
-
-Live gameplay has not been tested. Existing game compatibility, timing behavior, and upstream UI availability are unchanged by the source split. When changing feature code intentionally, update the baseline hash and source map as appropriate.
+Game and drawing/input APIs are mocked in these tests; live Matcha rendering and gameplay have not been verified here.

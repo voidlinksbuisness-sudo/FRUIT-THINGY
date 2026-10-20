@@ -44,6 +44,10 @@ local function run(baseUrl)
     -- Each file retains its original newlines; insert no wrappers or separators.
     local runtime, compileError = loadstring(table.concat(sources), "@FRUIT-THINGY/runtime")
     if not runtime then error("FRUIT-THINGY runtime compile failed: " .. tostring(compileError), 0) end
+    -- The UI library is fetched from this same immutable revision by the adapter.
+    _G.FRUIT_THINGY_BASE_URL = baseUrl
+    local shared = (type(getgenv) == "function" and getgenv()) or _G
+    if type(shared) == "table" then shared.FRUIT_THINGY_BASE_URL = baseUrl end
     return runtime()
 end
 

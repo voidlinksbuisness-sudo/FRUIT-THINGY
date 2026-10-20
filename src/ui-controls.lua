@@ -6,13 +6,13 @@ islandNames = {}
 for _, isle in pairs(islandList) do table.insert(islandNames, isle.name) end
 
 Window = Library:CreateWindow({
-    Title = "laced.club",
+    Title = "FRUIT THINGY",
     Columns = 2,
     Divider = true,
     ConfigFile = "myth4c_bloxfruits.json",
     BuiltInIndicatorToggle = false,
-    Width = 540,
-    Height = 570,
+    Width = 760,
+    Height = 560,
     Theme = { Colors = { Accent = Color3.fromRGB(255,111,0) } }
 })
 
@@ -22,6 +22,7 @@ local misc2Tab=Window:AddTab("Misc2")
 local otherTab=Window:AddTab("Other")
 local pvpTab=Window:AddTab("PvP")
 local automationTab=Window:AddTab("Automation")
+Window:InitializeSettings()
 
 do
     local MagnetSettings={

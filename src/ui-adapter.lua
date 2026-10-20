@@ -1,261 +1,152 @@
+-- INS UI compatibility layer for the existing FRUIT-THINGY controls.
 do
+    Library = nil
     local ok, err = pcall(function()
-        local ueSource = game:HttpGet("https://raw.githubusercontent.com/hauntedscripts/Scripts2/refs/heads/main/matcha%20ue")
-        local ueChunk, ueError = loadstring(ueSource, "laced.club UE")
-        if not ueChunk then error(ueError or "UE compile failed") end
-        ueChunk()
-
-        local UE = (_G and (_G.UELibrary or _G.Library)) or UELibrary
-        if type(UE) ~= "table" then error("UE did not expose UELibrary") end
+        local environment = (type(getgenv) == "function" and getgenv()) or _G
+        local baseUrl = environment.FRUIT_THINGY_BASE_URL or _G.FRUIT_THINGY_BASE_URL
+        assert(type(baseUrl) == "string", "Missing FRUIT-THINGY revision URL")
+        local source = game:HttpGet(baseUrl .. "lib/ins-ui.lua")
+        local chunk, compileError = loadstring(source, "@FRUIT-THINGY/ins-ui.lua")
+        assert(type(chunk) == "function", compileError or "INS UI compile failed")
+        local previous = _G.INSUI
+        if previous and type(previous.Destroy) == "function" then pcall(function() previous:Destroy() end) end
+        local returned = chunk()
+        local INS = type(returned) == "table" and returned or _G.INSUI or environment.INSUI
+        assert(type(INS) == "table", "INS UI did not initialize")
 
         local controls = {}
-
-        -- Material lists must not inherit the upstream eight-item display cap.
-        local function enableFullDropdowns(window, uiLibrary)
-            local renderDefault = window._renderDropdownOverlay
-            function window:_renderDropdownOverlay(control)
-                if not control or not control.ShowAllOptions then
-                    return renderDefault(self, control)
-                end
-                if not control._boxRect then return end
-                local count = #control.Values
-                if count == 0 then return end
-                local viewportWidth, viewportHeight = 1920, 1080
-                pcall(function()
-                    local viewport = workspace.CurrentCamera.ViewportSize
-                    viewportWidth, viewportHeight = viewport.X, viewport.Y
-                end)
-                local margin = 4
-                local fontSize = uiLibrary.FontSize or 13
-                local itemHeight = math.max(20, fontSize + 8)
-                local rows = math.min(count, math.max(1, math.floor((viewportHeight - 2 * margin - 2) / itemHeight)))
-                local columns = math.ceil(count / rows)
-                local longest = 0
-                for _, value in ipairs(control.Values) do
-                    local text = tostring(value)
-                    longest = math.max(longest, #text + 4)
-                end
-                local columnWidth = math.max(control._boxRect.w, math.ceil(longest * fontSize * 0.55) + 12)
-                columnWidth = math.min(columnWidth, (viewportWidth - 2 * margin - 2) / columns)
-                local width, height = columnWidth * columns + 2, rows * itemHeight + 2
-                local x = math.max(margin, math.min(control._boxRect.x, viewportWidth - margin - width))
-                local below = control._boxRect.y + control._boxRect.h + 1
-                local above = control._boxRect.y - height - 1
-                local y = below
-                if below + height > viewportHeight - margin then
-                    y = above >= margin and above or math.max(margin, viewportHeight - margin - height)
-                end
-                local textSize = math.max(1, math.min(fontSize, math.floor((columnWidth - 12) / (longest * 0.55))))
-                if not control._listPack then
-                    control._listPack = {
-                        Background = self:_draw("Square", {Filled = true, Color = uiLibrary.BackgroundColor, ZIndex = 30}),
-                        Border = self:_draw("Square", {Filled = false, Thickness = 1, Color = uiLibrary.OutlineColor, ZIndex = 31}),
-                        Items = {},
-                    }
-                end
-                local pack = control._listPack
-                control._listRect = {x = x, y = y, w = width, h = height}
-                control._itemRects = {}
-                pack.Background.Position, pack.Background.Size = Vector2.new(x, y), Vector2.new(width, height)
-                pack.Border.Position, pack.Border.Size = Vector2.new(x, y), Vector2.new(width, height)
-                pack.Background.Visible, pack.Border.Visible = true, true
-                for index = 1, count do
-                    local column = math.floor((index - 1) / rows)
-                    local row = (index - 1) % rows
-                    local itemX, itemY = x + 1 + column * columnWidth, y + 1 + row * itemHeight
-                    if not pack.Items[index] then
-                        pack.Items[index] = {
-                            Background = self:_draw("Square", {Filled = true, Color = uiLibrary.BackgroundColor, ZIndex = 32}),
-                            Text = self:_draw("Text", {Color = uiLibrary.FontColor, Outline = true, ZIndex = 33}),
-                        }
-                    end
-                    local item, value = pack.Items[index], control.Values[index]
-                    local selected = control.Multi and control.Value[value] == true or (not control.Multi and control.Value == value)
-                    -- Preserve value indices for the existing click handler and callbacks.
-                    control._itemRects[index] = {x = itemX, y = itemY, w = columnWidth, h = itemHeight}
-                    item.Background.Position, item.Background.Size = Vector2.new(itemX, itemY), Vector2.new(columnWidth, itemHeight)
-                    item.Background.Color = selected and uiLibrary.MainColor or uiLibrary.BackgroundColor
-                    item.Background.Visible = true
-                    item.Text.Text = (selected and "[x] " or "") .. tostring(value)
-                    item.Text.Size = textSize
-                    item.Text.Color = selected and uiLibrary.AccentColor or uiLibrary.FontColor
-                    item.Text.Position = Vector2.new(itemX + 6, itemY + math.floor((itemHeight - textSize) / 2))
-                    item.Text.Visible = true
-                end
-                for index = count + 1, #pack.Items do
-                    pack.Items[index].Background.Visible = false
-                    pack.Items[index].Text.Visible = false
-                end
+        local Adapter = {Raw = INS, Controls = controls, Windows = {}}
+        local function copy(values)
+            local result = {}
+            for key, value in pairs(values or {}) do result[key] = value end
+            return result
+        end
+        local function decode(kind, multi, value)
+            if kind ~= "Dropdown" then return value end
+            if not multi then return type(value) == "table" and value[1] or nil end
+            local result = {}
+            for _, item in ipairs(value or {}) do result[item] = true end
+            return result
+        end
+        local function encode(kind, multi, value)
+            if kind == "KeyPicker" then return string.lower(tostring(value or "none")) end
+            if kind ~= "Dropdown" then return value end
+            if not multi then return value == nil and {} or {value} end
+            local result = {}
+            for key, selected in pairs(value or {}) do
+                if type(key) == "number" then result[#result + 1] = selected
+                elseif selected then result[#result + 1] = key end
             end
+            return result
         end
-
-        local function roundingFor(step, explicit)
-            if tonumber(explicit) then return math.max(0, math.floor(tonumber(explicit))) end
-            step = tonumber(step) or 1
-            if step >= 1 then return 0 end
-            local decimals = tostring(step):match("%.(%d+)")
-            return decimals and #decimals or 0
-        end
-
-        local function enhanceControl(id, control)
-            if not control then return control end
-            controls[id] = control
-            control.Set = control.SetValue
+        local function wrap(id, row, kind, info)
+            local multi = info.Multi == true
+            local control = {Raw = row, Type = kind, Multi = multi, Callback = info.Callback}
+            function control:SetValue(value)
+                value = encode(kind, multi, value)
+                if kind == "KeyPicker" then row.Value = value
+                else row:Set(value) end
+                return self
+            end
+            control.Set, control.SetState = control.SetValue, control.SetValue
+            function control:GetValue() return self.Value end
+            function control:SetValues(values) row:UpdateChoices(copy(values)); return self end
             control.SetOptions = control.SetValues
+            function control:SetText(value) row:SetText(value); return self end
+            function control:SetVisible(value) row:SetVisible(value); return self end
+            setmetatable(control, {
+                __index = function(_, key)
+                    if key == "Value" then return decode(kind, multi, row.Value) end
+                    return nil
+                end,
+                __newindex = function(self, key, value)
+                    if key == "Value" then row.Value = encode(kind, multi, value)
+                    else rawset(self, key, value) end
+                end,
+            })
+            controls[id] = control
             return control
         end
 
         local function makeTab(rawTab)
-            local tab = { Raw = rawTab, Groups = {} }
-
-            local function columnOf(info)
-                local column = tonumber(info and info.Column) or 1
-                return column == 2 and 2 or 1
-            end
-
-            local function groupFor(self, info)
-                local column = columnOf(info)
-                local group = self.Groups[column]
-                if not group then
-                    if column == 2 then group = self.Raw:AddRightGroupbox("General")
-                    else group = self.Raw:AddLeftGroupbox("General") end
-                    self.Groups[column] = group
+            local tab = {Raw = rawTab, Groups = {}}
+            local function column(info) return tonumber(info and info.Column) == 2 and 2 or 1 end
+            local function group(self, info)
+                local side = column(info)
+                if not self.Groups[side] then
+                    self.Groups[side] = self.Raw:Section("General", side == 2 and "Right" or "Left")
                 end
-                return group
+                return self.Groups[side]
             end
-
             function tab:AddSection(name, info)
-                local column = columnOf(info)
-                local group
-                if column == 2 then group = self.Raw:AddRightGroupbox(name)
-                else group = self.Raw:AddLeftGroupbox(name) end
-                self.Groups[column] = group
-                return group
+                local side = column(info)
+                local section = self.Raw:Section(name, side == 2 and "Right" or "Left")
+                self.Groups[side] = section
+                return section
             end
-
             function tab:AddToggle(id, info)
                 info = info or {}
-                local group = groupFor(self, info)
-                local toggle = group:AddToggle(id, {
-                    Text = info.Text or id,
-                    Default = info.Default == true,
-                    Callback = info.Callback,
-                    Tooltip = info.Description,
-                    Risky = info.Risky == true,
-                })
-                enhanceControl(id, toggle)
-                if info.Keybind == true then
-                    local picker = toggle:AddKeyPicker(id .. "_keybind", {
-                        Text = (info.Text or id) .. " key",
-                        Default = "None",
-                        Mode = "Toggle",
-                        SyncToggleState = true,
-                    })
-                    enhanceControl(id .. "_keybind", picker)
+                local row = group(self, info):Toggle(info.Text or id, info.Default == true, info.Callback, info.Description)
+                if info.Risky then row:SetRisk(true) end
+                local control = wrap(id, row, "Toggle", info)
+                if info.Keybind then
+                    row:AddKeybind("none", "Toggle")
+                    local picker = wrap(id .. "_keybind", row.Bind, "KeyPicker", {})
+                    picker.Mode = "Toggle"
                 end
-                return toggle
+                return control
             end
-
             function tab:AddSlider(id, info)
                 info = info or {}
-                local step = tonumber(info.Step) or 1
-                local minimum = tonumber(info.Min) or 0
-                local maximum = tonumber(info.Max) or 100
-                local callback = info.Callback
-                local slider
+                local step, minimum, maximum = tonumber(info.Step) or 1, tonumber(info.Min) or 0, tonumber(info.Max) or 100
+                local row
                 local function changed(value)
-                    local snapped = minimum + math.floor(((value - minimum) / step) + 0.5) * step
-                    if snapped < minimum then snapped = minimum end
-                    if snapped > maximum then snapped = maximum end
-                    if slider then slider.Value = snapped end
-                    if callback then callback(snapped) end
+                    local snapped = minimum + math.floor((value - minimum) / step + 0.5) * step
+                    snapped = math.max(minimum, math.min(maximum, snapped))
+                    if row then row.Value = snapped end
+                    if info.Callback then info.Callback(snapped) end
                 end
-                slider = groupFor(self, info):AddSlider(id, {
-                    Text = info.Text or id,
-                    Default = info.Default,
-                    Min = minimum,
-                    Max = maximum,
-                    Rounding = roundingFor(step, info.Decimals),
-                    Suffix = info.Suffix or "",
-                    Callback = changed,
-                    Tooltip = info.Description,
-                })
-                return enhanceControl(id, slider)
+                row = group(self, info):Slider(info.Text or id, info.Default or minimum, step, minimum, maximum, info.Suffix or "", changed, info.Description)
+                return wrap(id, row, "Slider", info)
             end
-
             function tab:AddDropdown(id, info)
                 info = info or {}
-                local dropdown = groupFor(self, info):AddDropdown(id, {
-                    Text = info.Text or id,
-                    Default = info.Default,
-                    Values = info.Options or info.Values or {},
-                    Multi = info.Multi == true,
-                    AllowNull = info.AllowNull == true,
-                    Callback = info.Callback,
-                    Tooltip = info.Description,
-                })
-                dropdown.ShowAllOptions = info.ShowAllOptions == true
-                return enhanceControl(id, dropdown)
+                local multi = info.Multi == true
+                local row = group(self, info):Dropdown(info.Text or id,
+                    encode("Dropdown", multi, info.Default), info.Options or info.Values or {}, multi,
+                    function(value) if info.Callback then info.Callback(decode("Dropdown", multi, value)) end end,
+                    info.Description, true)
+                row.ShowAllOptions = info.ShowAllOptions == true
+                return wrap(id, row, "Dropdown", info)
             end
-
             function tab:AddButton(id, info)
                 info = info or {}
-                local button = groupFor(self, info):AddButton({
-                    Text = info.Text or id,
-                    Func = info.Callback,
-                    Tooltip = info.Description,
-                    DoubleClick = info.DoubleClick == true,
-                })
-                return enhanceControl(id, button)
+                local row = group(self, info):Button(info.Text or id, info.Callback, info.Description)
+                return wrap(id, row, "Button", info)
             end
-
             function tab:AddPriorityList(id, info)
                 info = info or {}
-                local group = groupFor(self, info)
-                local options = info.Options or {}
-                local selected = {}
-                for index, value in ipairs(info.Default or options) do selected[index] = value end
-                local pickers = {}
+                local options, selected, pickers = info.Options or {}, copy(info.Default or info.Options or {}), {}
                 local changing = false
-
-                local function emit()
-                    if info.Callback then
-                        local order = {}
-                        for index = 1, #options do order[index] = selected[index] end
-                        info.Callback(order)
-                    end
-                end
-
+                local function emit() if info.Callback then info.Callback(copy(selected)) end end
                 for index = 1, #options do
                     local slot = index
-                    local oldValue = selected[slot]
-                    local picker
-                    picker = group:AddDropdown(id .. "_" .. tostring(slot), {
-                        Text = (info.Text or id) .. " " .. tostring(slot),
-                        Default = selected[slot],
-                        Values = options,
+                    pickers[slot] = self:AddDropdown(id .. "_" .. slot, {
+                        Text = (info.Text or id) .. " " .. slot, Options = options, Default = selected[slot],
+                        Column = info.Column, Description = info.Description,
                         Callback = function(value)
                             if changing then return end
-                            local previous = selected[slot]
-                            local duplicate = nil
+                            local previous, duplicate = selected[slot], nil
                             for other = 1, #selected do
-                                if other ~= slot and selected[other] == value then duplicate = other break end
+                                if other ~= slot and selected[other] == value then duplicate = other; break end
                             end
                             selected[slot] = value
-                            if duplicate then
-                                selected[duplicate] = previous
-                                if pickers[duplicate] then pickers[duplicate].Value = previous end
-                            end
-                            oldValue = value
+                            if duplicate then selected[duplicate] = previous; pickers[duplicate].Value = previous end
                             emit()
                         end,
-                        Tooltip = info.Description,
                     })
-                    pickers[slot] = picker
-                    enhanceControl(id .. "_" .. tostring(slot), picker)
                 end
-
-                local list = { Pickers = pickers, Value = selected }
+                local list = {Pickers = pickers, Value = selected}
                 function list:SetValue(order)
                     if type(order) ~= "table" then return self end
                     changing = true
@@ -263,77 +154,32 @@ do
                         selected[index] = order[index]
                         pickers[index].Value = order[index]
                     end
-                    changing = false
-                    emit()
-                    return self
+                    changing = false; emit(); return self
                 end
                 function list:SetValues(values)
-                    for _, picker in ipairs(pickers) do picker:SetValues(values or {}) end
+                    for _, picker in ipairs(pickers) do picker:SetValues(values) end
                     return self
                 end
                 list.SetOptions = list.SetValues
                 controls[id] = list
                 return list
             end
-
             return tab
-        end
-
-        local Adapter = { Raw = UE, Controls = controls, Windows = {} }
-
-        local function makePopup(adapter, info)
-            info = info or {}
-            local raw = adapter.Raw:CreateWindow({
-                Title = info.Title or "Settings",
-                Width = info.Width or 520,
-                Height = info.Height or 500,
-                AutoShow = false,
-                Center = true,
-            })
-            enableFullDropdowns(raw, adapter.Raw)
-            adapter.Raw.Toggled = true
-            local page = makeTab(raw:AddTab(info.Title or "Settings"))
-            local popup = { Raw = raw }
-            function popup:AddSection(...) return page:AddSection(...) end
-            function popup:AddToggle(...) return page:AddToggle(...) end
-            function popup:AddSlider(...) return page:AddSlider(...) end
-            function popup:AddDropdown(...) return page:AddDropdown(...) end
-            function popup:AddButton(...) return page:AddButton(...) end
-            function popup:AddPriorityList(...) return page:AddPriorityList(...) end
-            function popup:Show() raw:Show() return self end
-            function popup:Hide() raw:Hide() return self end
-            function popup:Set(id, value)
-                local control = controls[id]
-                if control and control.SetValue then control:SetValue(value)
-                elseif control and control.Set then control:Set(value) end
-                return self
-            end
-            return popup
         end
 
         function Adapter:CreateWindow(info)
             info = info or {}
-            local accent = info.Theme and info.Theme.Colors and info.Theme.Colors.Accent
-            if accent then self.Raw.AccentColor = accent end
-            if info.ConfigFile or info.SettingsFile then
-                self.Raw.SettingsFile = (info.ConfigFile or info.SettingsFile) .. ".ui.json"
-            end
-            local raw = self.Raw:CreateWindow({
-                Title = info.Title or "laced.club",
-                Width = info.Width or 540,
-                Height = info.Height or 430,
-                AutoShow = true,
-                Center = true,
+            local raw = INS:CreateWindow({
+                title = info.Title or "FRUIT THINGY", subtitle = "Blox Fruits",
+                size = Vector2.new(760, 560), menuKey = "end", theme = "Waifu",
+                opacity = 1, rounding = 1, rowLines = true, checkboxStyle = false,
+                keybindOverlay = true, smartFps = true, gameInput = true, spotlight = true,
+                autoSave = false, startOpen = true, configFolder = "fruit_thingy_ui",
             })
-            enableFullDropdowns(raw, self.Raw)
-            local window = {
-                Raw = raw,
-                Tabs = {},
-                Indicator = { SetVisible = function() end },
-                Config = { IndicatorEnabled = false },
-                _lastMenuDown = false,
-            }
-
+            INS:SetBackgroundImage(
+                "https://raw.githubusercontent.com/voidlinksbuisness-sudo/scripts/748e48118250bda21774d36a941578a2eba08eb3/assets/fftm-ui-background.png",
+                0.14, 2, 1)
+            local window = {Raw = raw, Tabs = {}, Indicator = {SetVisible = function() end}, Config = {}}
             local configFolder = tostring(info.ConfigFolder or "laced_club_configs")
             local selectedConfig = ""
             local function safeConfigName(name)
@@ -407,8 +253,7 @@ do
             local function loadFeatureConfig(name)
                 name = safeConfigName(name or selectedConfig)
                 local path = configPathFor(name)
-                local wasVisible = raw.Visible
-                local wasToggled = self.Raw.Toggled
+                local wasVisible = INS:IsOpen()
                 local ok, data = pcall(function()
                     local http = game:GetService("HttpService")
                     return http:JSONDecode(readfile(path))
@@ -447,9 +292,7 @@ do
                     if control then control.Value = value end
                     loaded = loaded + 1
                 end
-                raw.Visible = wasVisible
-                self.Raw.Toggled = wasToggled
-                raw._visibilityDirty = true
+                INS:SetOpen(wasVisible)
                 selectedConfig = name
                 configPath = path
                 window.Config.File = path
@@ -471,45 +314,66 @@ do
                 Load = function(name) return loadFeatureConfig(name) end,
             }
 
+
             function window:AddTab(name)
-                local tab = makeTab(raw:AddTab(name))
+                local icons = {Main="house", Misc="eye", Misc2="grid", Other="three-sliders-horizontal", PvP="swords", Automation="lightning-bolt"}
+                local tab = makeTab(raw:Tab(name, icons[name] or "gear"))
                 self.Tabs[name] = tab
                 return tab
             end
-
             function window:Set(id, value)
                 local control = controls[id]
-                if control and control.SetValue then control:SetValue(value)
-                elseif control and control.Set then control:Set(value) end
+                if control and control.SetValue then control:SetValue(value) end
                 return self
             end
-
             function window:CreatePopup(popupInfo)
-                return makePopup(Adapter, popupInfo)
+                -- INS has one native window. Auxiliary settings use a dedicated page.
+                local page = makeTab(raw:Tab(popupInfo.Title or "Settings", "gear"))
+                page.Raw.Hidden = true
+                local previousTab
+                function page:Show()
+                    if INS:GetSelectedTab() ~= self.Raw then previousTab = INS:GetSelectedTab() end
+                    self.Raw.Hidden = false
+                    INS:SelectTab(self.Raw)
+                    INS:SetOpen(true)
+                    return self
+                end
+                function page:Hide()
+                    self.Raw.Hidden = true
+                    if INS:GetSelectedTab() == self.Raw and previousTab then INS:SelectTab(previousTab) end
+                    return self
+                end
+                function page:Set(id, value) window:Set(id, value); return self end
+                return page
             end
-
-            function window:Show() raw:Show() return self end
-            function window:Hide() raw:Hide() return self end
-            function window:SetVisible(value) if value then raw:Show() else raw:Hide() end return self end
-
-            function window:Step()
-                return self
+            function window:InitializeSettings()
+                if self._settingsReady then return end
+                self._settingsReady = true
+                raw:AddSettingsTab("gear")
+                local tab = raw:Tab("Profiles", "folder")
+                local section = tab:Section("Feature Profiles", "Full", "Save and load existing FRUIT-THINGY feature settings.")
+                local name = section:Textbox("Profile name", "default", function(value) selectedConfig = safeConfigName(value) end)
+                local picker = section:Dropdown("Saved profiles", {}, listConfigNames(), false, function(values)
+                    if values[1] then selectedConfig = values[1]; name.Value = selectedConfig end
+                end, "Existing feature profiles remain compatible.", true)
+                section:Button("Save profile", function()
+                    saveFeatureConfig(name.Value)
+                    picker:UpdateChoices(listConfigNames())
+                end)
+                section:Button("Load profile", function() loadFeatureConfig(selectedConfig ~= "" and selectedConfig or name.Value) end)
+                section:Button("Refresh profiles", function() picker:UpdateChoices(listConfigNames()) end)
             end
-
-            table.insert(Adapter.Windows, window)
-
-            if self.Raw.Configs then
-                window.Config.Folder = self.Raw.Configs.Folder
-                window.Config.Save = self.Raw.Configs.Save
-                window.Config.Load = self.Raw.Configs.Load
-            end
+            function window:Show() INS:SetOpen(true); return self end
+            function window:Hide() INS:SetOpen(false); return self end
+            function window:SetVisible(value) INS:SetOpen(value); return self end
+            function window:Step() return self end
+            table.insert(self.Windows, window)
             return window
         end
-
         Library = Adapter
     end)
     if not ok or not Library then
-        warn("Failed to load UE UI: " .. tostring(err))
+        warn("Failed to load FRUIT-THINGY INS UI: " .. tostring(err))
         return
     end
 end
