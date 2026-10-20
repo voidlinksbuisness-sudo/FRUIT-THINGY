@@ -266,9 +266,18 @@ mainTab:AddSection("Auto Mastery", { Column = 2 })
 mainTab:AddDropdown("mastery_weapon", {
     Text="Mastery Weapon", Options={"Melee","Sword","Gun"}, Default="Melee", Column=2,
     Callback=function(v)
-        if v=="Melee" or v=="Sword" or v=="Gun" then S.masteryWeapon=v end
+        if v=="Melee" or v=="Sword" or v=="Gun" then
+            S.masteryWeapon=v
+            pcall(function() Window:Set("mastery_slot",S.masterySlots[v]) end)
+        end
     end
 })
+mainTab:AddSlider("mastery_slot", {
+    Text="Mastery Hotbar Slot", Description="Slot containing the selected weapon type",
+    Min=1,Max=9,Step=1,Default=1,Integer=true,Column=2,
+    Callback=function(v) S.masterySlots[S.masteryWeapon]=math.max(1,math.min(9,math.floor(tonumber(v) or 1))) end
+})
+
 mainTab:AddToggle("auto_mastery", {
     Text="Auto Mastery", Description="Farms nearest NPCs with the selected weapon; aims guns at the NPC",
     Default=false, Keybind=true, Column=2,

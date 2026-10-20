@@ -57,6 +57,7 @@ S = {
     autoRaid        = false,
     autoMastery     = false,
     masteryWeapon   = "Melee",
+    masterySlots    = {Melee=1,Sword=3,Gun=4},
     customPull      = false,
     voidPull        = false,
     skyPull         = false,
