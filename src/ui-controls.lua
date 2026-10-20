@@ -633,6 +633,14 @@ mainTab:AddToggle("auto_race_ability",{
     Callback=function(v) S.autoRaceAbility=v end
 })
 
+mainTab:AddToggle("auto_v4",{
+    Text="Auto V4",Description="Presses Y every 5 seconds while enabled",Default=false,Column=1,
+    Callback=function(v)
+        S.autoV4=v
+        S.autoV4NextPress=v and (os.clock()+5) or 0
+    end
+})
+
 mainTab:AddSection("NPC Farm", { Column = 1 })
 
 mainTab:AddToggle("auto_npc_farm", {

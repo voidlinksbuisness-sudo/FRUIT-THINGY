@@ -349,3 +349,19 @@ task.spawn(function()
     end
 end)
 
+
+-- Auto V4 uses a scheduled tap, never a held key.
+task.spawn(function()
+    while true do
+        if S.autoV4 and os.clock() >= S.autoV4NextPress then
+            S.autoV4NextPress = os.clock() + 5
+            pcall(function() setrobloxinput(true) end)
+            pcall(function() keypress(0x59) end)
+            task.wait(0.05)
+            -- Always release, including when disabled during the tap.
+            pcall(function() keyrelease(0x59) end)
+        end
+        task.wait(0.05)
+    end
+end)
+
