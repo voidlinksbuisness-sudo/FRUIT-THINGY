@@ -68,6 +68,11 @@
       "originalEndLine": 3494
     },
     {
+      "path": "src/fire-flowers.lua",
+      "originalStartLine": 3495,
+      "originalEndLine": 3494
+    },
+    {
       "path": "src/collection-and-farming.lua",
       "originalStartLine": 3495,
       "originalEndLine": 3851
@@ -133,6 +138,6 @@
       "originalEndLine": 6462
     }
   ],
-  "runtimeBlobSha": "786e1f9d38810aebb23bf8baa60750f8b5d3d73c",
+  "runtimeBlobSha": "4348145406cdbdeae4673bb30ddb11b1e68c05e2",
   "note": "Original line ranges document the import. runtimeBlobSha tracks the current source after intentional fixes."
 }
