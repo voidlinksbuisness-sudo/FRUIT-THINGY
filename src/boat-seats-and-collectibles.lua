@@ -264,9 +264,9 @@ mainTab:AddToggle("auto_raid", {
 
 mainTab:AddSection("Auto Mastery", { Column = 2 })
 mainTab:AddDropdown("mastery_weapon", {
-    Text="Mastery Weapon", Options={"Melee","Sword","Gun"}, Default="Melee", Column=2,
+    Text="Mastery Weapon", Options={"Melee","Sword","Gun","Blox Fruit"}, Default="Melee", Column=2,
     Callback=function(v)
-        if v=="Melee" or v=="Sword" or v=="Gun" then
+        if v=="Melee" or v=="Sword" or v=="Gun" or v=="Blox Fruit" then
             S.masteryWeapon=v
             pcall(function() Window:Set("mastery_slot",S.masterySlots[v]) end)
         end
@@ -278,8 +278,21 @@ mainTab:AddSlider("mastery_slot", {
     Callback=function(v) S.masterySlots[S.masteryWeapon]=math.max(1,math.min(9,math.floor(tonumber(v) or 1))) end
 })
 
+mainTab:AddSlider("fruit_mastery_percent", {
+    Text="Fruit Switch Health %", Description="Switch from melee M1 to fruit moves at this NPC health percentage",
+    Min=1,Max=100,Step=1,Default=20,Integer=true,Column=2,
+    Callback=function(v) S.fruitMasteryPercent=math.max(1,math.min(100,tonumber(v) or 20)) end
+})
+for _,move in ipairs({"Z","X","C","V","F"}) do
+    local key=move
+    mainTab:AddToggle("fruit_mastery_"..string.lower(key), {
+        Text="Fruit Move "..key,Default=true,Column=2,
+        Callback=function(v) S.fruitMasteryMoves[key]=v end
+    })
+end
+
 mainTab:AddToggle("auto_mastery", {
-    Text="Auto Mastery", Description="Farms nearest NPCs with the selected weapon; aims guns at the NPC",
+    Text="Auto Mastery", Description="Farms nearest NPCs; Gun/Fruit use melee first, then finish with the selected weapon",
     Default=false, Keybind=true, Column=2,
     Callback=function(v)
         S.autoMastery=v

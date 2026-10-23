@@ -100,3 +100,40 @@ end
 stats.MaxHealth=0;assert(_TEST.attackWeapon("Gun",target)=="Gun")
 stats.MaxHealth=nil;assert(_TEST.attackWeapon("Gun",target)=="Gun")
 assert(_TEST.attackWeapon("Gun",{FindFirstChildOfClass=function() error("unsupported") end})=="Gun")
+
+-- Fruit has an independent, adjustable weakening threshold.
+S.fruitMasteryPercent=35
+stats.MaxHealth=200;stats.Health=71
+assert(_TEST.attackWeapon("Blox Fruit",target)=="Melee")
+stats.Health=70;assert(_TEST.attackWeapon("Blox Fruit",target)=="Blox Fruit")
+stats.Health=60;assert(_TEST.attackWeapon("Gun",target)=="Melee")
+S.fruitMasteryPercent=100;stats.Health=200
+assert(_TEST.attackWeapon("Blox Fruit",target)=="Blox Fruit")
+S.fruitMasteryMoves={Z=false,X=true,C=false,V=false,F=true}
+local movePresses,moveReleases={},{}
+keypress=function(code) movePresses[#movePresses+1]=code end
+keyrelease=function(code) moveReleases[#moveReleases+1]=code end
+local alive=true
+isAlive=function() return alive end
+local part={Position={X=3,Y=0,Z=4}}
+local fruitTarget={FindFirstChild=function() return part end}
+clock=10
+assert(_TEST.castFruitMove(fruitTarget,part,function() return true end))
+assert(movePresses[1]==string.byte('X') and moveReleases[1]==movePresses[1])
+assert(_TEST.castFruitMove(fruitTarget,part,function() return true end))
+assert(movePresses[2]==string.byte('F') and moveReleases[2]==movePresses[2])
+assert(not _TEST.castFruitMove(fruitTarget,part,function() return true end))
+S.fruitMasteryMoves={Z=false,X=false,C=false,V=false,F=false}
+clock=20
+assert(not _TEST.castFruitMove(fruitTarget,part,function() return true end) and #movePresses==2)
+S.fruitMasteryMoves.Z=true
+local active=true
+keypress=function(code) movePresses[#movePresses+1]=code;active=false end
+assert(_TEST.castFruitMove(fruitTarget,part,function() return active end))
+assert(moveReleases[3]==string.byte('Z'),'Disabling mastery must release its move key')
+clock=30;active=true
+keypress=function(code) movePresses[#movePresses+1]=code end
+task.wait=function() error('injected cast failure') end
+warn=function() end
+assert(not _TEST.castFruitMove(fruitTarget,part,function() return active end))
+assert(moveReleases[4]==string.byte('Z'),'Cast errors must release the key')
