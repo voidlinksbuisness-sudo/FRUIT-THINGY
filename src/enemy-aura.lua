@@ -8,7 +8,18 @@ do
         firstName     = "None",
         regAtk        = nil,
         regHit        = nil,
+        lastControl   = -math.huge,
     }
+
+    local function aura_controlRemote()
+        -- Resolve on every attack so respawns and weapon changes cannot leave
+        -- a stale remote cached, and never send input for another player.
+        local characters=game.Workspace:FindFirstChild("Characters")
+        local character=characters and characters:FindFirstChild(LocalPlayer.Name)
+        if not character then character=LocalPlayer.Character end
+        local control=character and character:FindFirstChild("Control-Control")
+        return control and control:FindFirstChild("RemoteEvent")
+    end
 
     local function aura_ensureRemotes()
         if aura.regAtk and aura.regHit then return true end
@@ -67,7 +78,7 @@ do
     end
 
     local function aura_attack(list)
-        if #list == 0 then return end
+        if not aura.enabled or #list == 0 then return end
         local hitTable = {}
         local primary = nil
         for _, entry in ipairs(list) do
@@ -77,17 +88,25 @@ do
             end
         end
         if #hitTable == 0 then return end
+        local control=aura_controlRemote()
+        if control and os.clock()-aura.lastControl>=0.15 then
+            local ok=pcall(function() control:FireServer(true) end)
+            if ok then aura.lastControl=os.clock() end
+        end
+        if not aura_ensureRemotes() then return end
         pcall(function() aura.regAtk:FireServer(0.5) end)
         task.wait()
+        if not aura.enabled then return end
         pcall(function() aura.regHit:FireServer(primary, hitTable, nil, aura.sessionId) end)
     end
 
     mainTab:AddSection("NPC Aura", { Column = 1 })
     mainTab:AddToggle("npc_aura", {
-        Text="NPC Aura", Description="Fires RegisterHit on all NPCs within range. MATCHA PRO ONLY!",
+        Text="NPC Aura", Description="Hits NPCs within range and activates equipped Control M1. MATCHA PRO ONLY!",
         Default=false, Keybind=true, Column=1,
         Callback=function(v)
             aura.enabled = v
+            if v then aura.lastControl=-math.huge end
             aura_ensureRemotes()
             notify(v and "NPC Aura ON!" or "NPC Aura OFF!", "laced.club", 2)
         end
@@ -101,7 +120,9 @@ do
     task.spawn(function()
         while true do
             if aura.enabled then
-                if aura_ensureRemotes() then
+                -- Control's own remote can run even before generic combat
+                -- remotes are available.
+                do
                     local enemies = aura_getEnemies()
                     aura.targetCount = #enemies
                     if aura.targetCount > 0 then
