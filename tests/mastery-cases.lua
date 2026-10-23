@@ -137,3 +137,20 @@ task.wait=function() error('injected cast failure') end
 warn=function() end
 assert(not _TEST.castFruitMove(fruitTarget,part,function() return active end))
 assert(moveReleases[4]==string.byte('Z'),'Cast errors must release the key')
+-- Fruit aim follows a moving NPC during the hold and immediately before release.
+clock=40;alive=true
+S.fruitMasteryMoves={Z=false,X=true,C=false,V=false,F=false}
+local projections={}
+local cameraTurns=0
+CFrame.lookAt=function(_,pos) cameraTurns=cameraTurns+1;return {Position={}} end
+WorldToScreen=function(pos) projections[#projections+1]=pos.X;return {X=pos.X,Y=pos.Z},true end
+mousemoveabs=function() end
+local moving={Position={X=1,Y=0,Z=2}}
+local movingEnemy={FindFirstChild=function() return moving end}
+task.wait=function(dt) clock=clock+dt;moving.Position={X=moving.Position.X+1,Y=0,Z=2} end
+local releaseX=nil
+keypress=function() end
+keyrelease=function() releaseX=projections[#projections] end
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end))
+assert(cameraTurns>=3 and #projections>=3,'Aim must update throughout a fruit move')
+assert(releaseX==moving.Position.X,'Release must aim at the current NPC position')

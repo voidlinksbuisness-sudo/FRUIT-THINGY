@@ -50,11 +50,11 @@ do
             and maxHealth>0 and health>maxHealth*(percent/100) then return "Melee" end
         return kind
     end
-    local function aim(part)
+    local function aim(part,trackCamera)
         local pos=getSafeFruitPosition(part)
         if not pos then return false end
         local screen,onScreen=WorldToScreen(pos)
-        if not screen or not onScreen then
+        if trackCamera or not screen or not onScreen then
             local camera=game.Workspace.CurrentCamera
             if not camera then return false end
             camera.CFrame=CFrame.lookAt(camera.CFrame.Position,pos)
@@ -77,7 +77,10 @@ do
             end
         end
         if not selected or not active() or not isAlive(enemy) then return false end
-        if not aim(enemy:FindFirstChild("Head") or part) then return false end
+        local function track()
+            return aim(enemy:FindFirstChild("Head") or part,true)
+        end
+        if not track() then return false end
         local code=string.byte(selected)
         local ok,err=pcall(function()
             setrobloxinput(true)
@@ -85,7 +88,11 @@ do
             fruitMoveTimes[selected]=os.clock()
             local started=os.clock()
             while active() and isAlive(enemy) and S.fruitMasteryMoves[selected]
-                and os.clock()-started<0.15 do task.wait(0.03) end
+                and os.clock()-started<0.15 do
+                if not track() then break end
+                task.wait(0.03)
+            end
+            if active() and isAlive(enemy) and S.fruitMasteryMoves[selected] then track() end
         end)
         -- Release even if disabled, target dies, or casting throws.
         pcall(function() keyrelease(code) end)
