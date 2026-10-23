@@ -137,3 +137,37 @@ task.wait=function() error('injected cast failure') end
 warn=function() end
 assert(not _TEST.castFruitMove(fruitTarget,part,function() return active end))
 assert(moveReleases[4]==string.byte('Z'),'Cast errors must release the key')
+-- Fruit aim follows a moving NPC during the hold and immediately before release.
+clock=40;alive=true
+S.fruitMasteryMoves={Z=false,X=true,C=false,V=false,F=false}
+local projections={}
+local cameraTurns=0
+CFrame.lookAt=function(_,pos) cameraTurns=cameraTurns+1;return {Position={}} end
+WorldToScreen=function(pos) projections[#projections+1]=pos.X;return {X=pos.X,Y=pos.Z},true end
+mousemoveabs=function() end
+local moving={Position={X=1,Y=0,Z=2}}
+local movingEnemy={FindFirstChild=function() return moving end}
+task.wait=function(dt) clock=clock+dt;moving.Position={X=moving.Position.X+1,Y=0,Z=2} end
+local releaseX=nil
+keypress=function() end
+keyrelease=function() releaseX=projections[#projections] end
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end))
+assert(cameraTurns>=3 and #projections>=3,'Aim must update throughout a fruit move')
+assert(releaseX==moving.Position.X,'Release must aim at the current NPC position')
+
+-- Optional fruit M1 clicks with aim, respects its interval, and sends no move key.
+clock=50
+S.fruitMasteryMoves={M1=true}
+local clicks,keyEvents=0,0
+mouse1click=function() clicks=clicks+1 end
+keypress=function() keyEvents=keyEvents+1 end
+keyrelease=function() keyEvents=keyEvents+1 end
+local turns=cameraTurns
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end))
+assert(clicks==1 and keyEvents==0 and cameraTurns>turns)
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==1)
+clock=51
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return false end) and clicks==1)
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==2)
+S.fruitMasteryMoves.M1=false;clock=52
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==2)

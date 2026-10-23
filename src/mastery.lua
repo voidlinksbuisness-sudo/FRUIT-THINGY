@@ -50,11 +50,11 @@ do
             and maxHealth>0 and health>maxHealth*(percent/100) then return "Melee" end
         return kind
     end
-    local function aim(part)
+    local function aim(part,trackCamera)
         local pos=getSafeFruitPosition(part)
         if not pos then return false end
         local screen,onScreen=WorldToScreen(pos)
-        if not screen or not onScreen then
+        if trackCamera or not screen or not onScreen then
             local camera=game.Workspace.CurrentCamera
             if not camera then return false end
             camera.CFrame=CFrame.lookAt(camera.CFrame.Position,pos)
@@ -66,18 +66,31 @@ do
     end
     local fruitMoveIndex=0
     local fruitMoveTimes={}
-    local fruitMoveKeys={"Z","X","C","V","F"}
+    local fruitMoveKeys={"Z","X","C","V","F","M1"}
     local function castFruitMove(enemy,part,active)
         local selected=nil
         for offset=1,#fruitMoveKeys do
             local index=(fruitMoveIndex+offset-1)%#fruitMoveKeys+1
             local key=fruitMoveKeys[index]
-            if S.fruitMasteryMoves[key] and os.clock()-(fruitMoveTimes[key] or -math.huge)>=1.5 then
+            if S.fruitMasteryMoves[key] and os.clock()-(fruitMoveTimes[key] or -math.huge)>=(key=="M1" and 0.15 or 1.5) then
                 selected=key; fruitMoveIndex=index; break
             end
         end
         if not selected or not active() or not isAlive(enemy) then return false end
-        if not aim(enemy:FindFirstChild("Head") or part) then return false end
+        local function track()
+            return aim(enemy:FindFirstChild("Head") or part,true)
+        end
+        if not track() then return false end
+        if selected=="M1" then
+            if not active() or not isAlive(enemy) or not S.fruitMasteryMoves.M1 then return false end
+            local ok,err=pcall(function()
+                setrobloxinput(true)
+                mouse1click()
+            end)
+            if ok then fruitMoveTimes.M1=os.clock()
+            else warn("Fruit mastery M1: "..tostring(err)) end
+            return ok
+        end
         local code=string.byte(selected)
         local ok,err=pcall(function()
             setrobloxinput(true)
@@ -85,7 +98,11 @@ do
             fruitMoveTimes[selected]=os.clock()
             local started=os.clock()
             while active() and isAlive(enemy) and S.fruitMasteryMoves[selected]
-                and os.clock()-started<0.15 do task.wait(0.03) end
+                and os.clock()-started<0.15 do
+                if not track() then break end
+                task.wait(0.03)
+            end
+            if active() and isAlive(enemy) and S.fruitMasteryMoves[selected] then track() end
         end)
         -- Release even if disabled, target dies, or casting throws.
         pcall(function() keyrelease(code) end)
@@ -166,11 +183,11 @@ do
                         return
                     end
                     setrobloxinput(true)
-                    if weapon=="Gun" then
+                    if weapon=="Gun" or weapon=="Melee" then
                         local target=enemy:FindFirstChild("Head") or part
-                        if not aim(target) then return end
+                        if not aim(target,weapon=="Melee") then return end
                         task.wait(0.02)
-                        if not active() or not isAlive(enemy) then return end
+                        if not active() or not isAlive(enemy) or attackWeapon(kind,enemy)~=weapon then return end
                     end
                     mouse1click()
                 end,kind=="Gun" and 0.15 or 0.06,{syncAttack=true,speed=S.MASTERY_TWEEN_SPEED})

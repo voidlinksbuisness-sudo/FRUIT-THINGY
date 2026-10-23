@@ -59,7 +59,7 @@ S = {
     masteryWeapon   = "Melee",
     masterySlots    = {Melee=1,Sword=3,Gun=4,["Blox Fruit"]=2},
     fruitMasteryPercent = 20,
-    fruitMasteryMoves = {Z=true,X=true,C=true,V=true,F=true},
+    fruitMasteryMoves = {Z=true,X=true,C=true,V=true,F=true,M1=false},
     customPull      = false,
     voidPull        = false,
     skyPull         = false,
