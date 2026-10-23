@@ -39,15 +39,16 @@ do
         return nil
     end
     local function attackWeapon(kind,enemy)
-        if kind~="Gun" then return kind end
+        if kind~="Gun" and kind~="Blox Fruit" then return kind end
+        local percent=kind=="Blox Fruit" and S.fruitMasteryPercent or 20
         local ok,health,maxHealth=pcall(function()
             local hum=enemy:FindFirstChildOfClass("Humanoid")
             return hum and hum.Health,hum and hum.MaxHealth
         end)
         -- If health cannot be read, use the gun rather than risk a melee kill.
         if ok and type(health)=="number" and type(maxHealth)=="number"
-            and maxHealth>0 and health>maxHealth*0.2 then return "Melee" end
-        return "Gun"
+            and maxHealth>0 and health>maxHealth*(percent/100) then return "Melee" end
+        return kind
     end
     local function aim(part)
         local pos=getSafeFruitPosition(part)
@@ -62,6 +63,34 @@ do
         if not screen or not onScreen then return false end
         mousemoveabs(math.floor(screen.X),math.floor(screen.Y))
         return true
+    end
+    local fruitMoveIndex=0
+    local fruitMoveTimes={}
+    local fruitMoveKeys={"Z","X","C","V","F"}
+    local function castFruitMove(enemy,part,active)
+        local selected=nil
+        for offset=1,#fruitMoveKeys do
+            local index=(fruitMoveIndex+offset-1)%#fruitMoveKeys+1
+            local key=fruitMoveKeys[index]
+            if S.fruitMasteryMoves[key] and os.clock()-(fruitMoveTimes[key] or -math.huge)>=1.5 then
+                selected=key; fruitMoveIndex=index; break
+            end
+        end
+        if not selected or not active() or not isAlive(enemy) then return false end
+        if not aim(enemy:FindFirstChild("Head") or part) then return false end
+        local code=string.byte(selected)
+        local ok,err=pcall(function()
+            setrobloxinput(true)
+            keypress(code)
+            fruitMoveTimes[selected]=os.clock()
+            local started=os.clock()
+            while active() and isAlive(enemy) and S.fruitMasteryMoves[selected]
+                and os.clock()-started<0.15 do task.wait(0.03) end
+        end)
+        -- Release even if disabled, target dies, or casting throws.
+        pcall(function() keyrelease(code) end)
+        if not ok then warn("Fruit mastery move: "..tostring(err)) end
+        return ok
     end
     task.spawn(function()
         local lastWarning=-math.huge
@@ -100,7 +129,7 @@ do
                     end
                     return
                 end
-                if kind~="Gun" and not equip(kind,active) then
+                if kind~="Gun" and kind~="Blox Fruit" and not equip(kind,active) then
                     if os.clock()-lastWarning>5 then
                         lastWarning=os.clock()
                         notify("Auto Mastery: put your "..kind.." in hotbar slot "..slot.." or change Mastery Hotbar Slot","laced.club",3)
@@ -109,6 +138,19 @@ do
                 end
                 farmAttack(hrp,active,nil,true,1000,function(enemy,part)
                     if not active() or not isAlive(enemy) then return end
+                    if kind=="Blox Fruit" then
+                        local anyMove=false
+                        for _,key in ipairs(fruitMoveKeys) do
+                            if S.fruitMasteryMoves[key] then anyMove=true;break end
+                        end
+                        if not anyMove then
+                            if os.clock()-lastWarning>5 then
+                                lastWarning=os.clock()
+                                notify("Auto Mastery: enable at least one fruit move","laced.club",3)
+                            end
+                            return
+                        end
+                    end
                     local weapon=attackWeapon(kind,enemy)
                     if not equip(weapon,active) then
                         if os.clock()-lastWarning>5 then
@@ -119,6 +161,10 @@ do
                     end
                     -- Equipping yields: health may cross the threshold during the switch.
                     if not active() or not isAlive(enemy) or attackWeapon(kind,enemy)~=weapon then return end
+                    if weapon=="Blox Fruit" then
+                        castFruitMove(enemy,part,active)
+                        return
+                    end
                     setrobloxinput(true)
                     if weapon=="Gun" then
                         local target=enemy:FindFirstChild("Head") or part
