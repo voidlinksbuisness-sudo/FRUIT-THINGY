@@ -8,7 +8,46 @@ do
         firstName     = "None",
         regAtk        = nil,
         regHit        = nil,
+        lastControl   = -math.huge,
+        controlEnabled = false,
     }
+
+    local function aura_controlTool()
+        local characters=game.Workspace:FindFirstChild("Characters")
+        local character=characters and characters:FindFirstChild(LocalPlayer.Name)
+        if not character then character=LocalPlayer.Character end
+        return character and character:FindFirstChild("Control-Control")
+    end
+
+    local function aura_controlAttack(list,tool)
+        if not aura.enabled or not aura.controlEnabled or not tool or #list==0 then return end
+        if os.clock()-aura.lastControl<0.15 then return end
+        local char=LocalPlayer.Character
+        local hrp=char and char:FindFirstChild("HumanoidRootPart")
+        local leftClick=tool:FindFirstChild("LeftClickRemote")
+        local remote=tool:FindFirstChild("RemoteEvent")
+        -- Never send the standalone true call that blocked manual M1.
+        if not hrp or not leftClick or not remote then return end
+        local nearest,best=nil,math.huge
+        for _,entry in ipairs(list) do
+            local hum=entry.enemy and entry.enemy:FindFirstChildOfClass("Humanoid")
+            if entry.enemy and entry.enemy.Parent and hum and hum.Health>0
+                and entry.part and entry.part.Parent then
+                local pos=entry.part.Position
+                local dx,dy,dz=pos.X-hrp.Position.X,pos.Y-hrp.Position.Y,pos.Z-hrp.Position.Z
+                local distance=math.sqrt(dx*dx+dy*dy+dz*dz)
+                if distance>=aura.minDist and distance<=aura.maxDist and distance<best then
+                    nearest,best=Vector3.new(dx/distance,dy/distance,dz/distance),distance
+                end
+            end
+        end
+        if not nearest then return end
+        aura.lastControl=os.clock()
+        local ok=pcall(function() leftClick:FireServer(nearest,1,true) end)
+        if ok and aura.enabled and aura.controlEnabled then
+            pcall(function() remote:FireServer(true) end)
+        end
+    end
 
     local function aura_ensureRemotes()
         if aura.regAtk and aura.regHit then return true end
@@ -67,7 +106,10 @@ do
     end
 
     local function aura_attack(list)
-        if #list == 0 then return end
+        if not aura.enabled or #list == 0 then return end
+        local tool=aura.controlEnabled and aura_controlTool()
+        if tool then aura_controlAttack(list,tool); return end
+        if not aura_ensureRemotes() then return end
         local hitTable = {}
         local primary = nil
         for _, entry in ipairs(list) do
@@ -79,6 +121,7 @@ do
         if #hitTable == 0 then return end
         pcall(function() aura.regAtk:FireServer(0.5) end)
         task.wait()
+        if not aura.enabled then return end
         pcall(function() aura.regHit:FireServer(primary, hitTable, nil, aura.sessionId) end)
     end
 
@@ -92,6 +135,11 @@ do
             notify(v and "NPC Aura ON!" or "NPC Aura OFF!", "laced.club", 2)
         end
     })
+    mainTab:AddToggle("npc_aura_control", {
+        Text="Control M1 Support", Description="Uses the Control remote sequence toward the nearest NPC while NPC Aura is on",
+        Default=false,Column=1,
+        Callback=function(v) aura.controlEnabled=v; aura.lastControl=-math.huge end
+    })
     mainTab:AddSlider("npc_aura_range", {
         Text="Aura Range", Description="Max distance to hit NPCs (studs)",
         Min=10, Max=300, Default=100, Integer=true, Column=1,
@@ -101,7 +149,7 @@ do
     task.spawn(function()
         while true do
             if aura.enabled then
-                if aura_ensureRemotes() then
+                do
                     local enemies = aura_getEnemies()
                     aura.targetCount = #enemies
                     if aura.targetCount > 0 then
