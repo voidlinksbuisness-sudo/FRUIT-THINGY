@@ -283,13 +283,17 @@ mainTab:AddSlider("fruit_mastery_percent", {
     Min=1,Max=100,Step=1,Default=20,Integer=true,Column=2,
     Callback=function(v) S.fruitMasteryPercent=math.max(1,math.min(100,tonumber(v) or 20)) end
 })
-for _,move in ipairs({"Z","X","C","V","F"}) do
-    local key=move
-    mainTab:AddToggle("fruit_mastery_"..string.lower(key), {
-        Text="Fruit Move "..key,Default=true,Column=2,
-        Callback=function(v) S.fruitMasteryMoves[key]=v end
-    })
-end
+mainTab:AddDropdown("fruit_mastery_moves", {
+    Text="Fruit Moves",Description="Select the moves used for Blox Fruit mastery",
+    Options={"Z","X","C","V","F"},Multi=true,
+    Default={Z=true,X=true,C=true,V=true,F=true},MaxVisible=5,Column=2,
+    Callback=function(selected)
+        if type(selected)~="table" then return end
+        for _,key in ipairs({"Z","X","C","V","F"}) do
+            S.fruitMasteryMoves[key]=selected[key]==true
+        end
+    end
+})
 
 mainTab:AddToggle("auto_mastery", {
     Text="Auto Mastery", Description="Farms nearest NPCs; Gun/Fruit use melee first, then finish with the selected weapon",
