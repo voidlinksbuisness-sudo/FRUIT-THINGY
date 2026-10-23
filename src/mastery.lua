@@ -66,13 +66,13 @@ do
     end
     local fruitMoveIndex=0
     local fruitMoveTimes={}
-    local fruitMoveKeys={"Z","X","C","V","F"}
+    local fruitMoveKeys={"Z","X","C","V","F","M1"}
     local function castFruitMove(enemy,part,active)
         local selected=nil
         for offset=1,#fruitMoveKeys do
             local index=(fruitMoveIndex+offset-1)%#fruitMoveKeys+1
             local key=fruitMoveKeys[index]
-            if S.fruitMasteryMoves[key] and os.clock()-(fruitMoveTimes[key] or -math.huge)>=1.5 then
+            if S.fruitMasteryMoves[key] and os.clock()-(fruitMoveTimes[key] or -math.huge)>=(key=="M1" and 0.15 or 1.5) then
                 selected=key; fruitMoveIndex=index; break
             end
         end
@@ -81,6 +81,16 @@ do
             return aim(enemy:FindFirstChild("Head") or part,true)
         end
         if not track() then return false end
+        if selected=="M1" then
+            if not active() or not isAlive(enemy) or not S.fruitMasteryMoves.M1 then return false end
+            local ok,err=pcall(function()
+                setrobloxinput(true)
+                mouse1click()
+            end)
+            if ok then fruitMoveTimes.M1=os.clock()
+            else warn("Fruit mastery M1: "..tostring(err)) end
+            return ok
+        end
         local code=string.byte(selected)
         local ok,err=pcall(function()
             setrobloxinput(true)

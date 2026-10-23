@@ -285,11 +285,11 @@ mainTab:AddSlider("fruit_mastery_percent", {
 })
 mainTab:AddDropdown("fruit_mastery_moves", {
     Text="Fruit Moves",Description="Select the moves used for Blox Fruit mastery",
-    Options={"Z","X","C","V","F"},Multi=true,
-    Default={Z=true,X=true,C=true,V=true,F=true},MaxVisible=5,Column=2,
+    Options={"Z","X","C","V","F","M1"},Multi=true,
+    Default={Z=true,X=true,C=true,V=true,F=true},MaxVisible=6,Column=2,
     Callback=function(selected)
         if type(selected)~="table" then return end
-        for _,key in ipairs({"Z","X","C","V","F"}) do
+        for _,key in ipairs({"Z","X","C","V","F","M1"}) do
             S.fruitMasteryMoves[key]=selected[key]==true
         end
     end

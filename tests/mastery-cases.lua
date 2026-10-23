@@ -154,3 +154,20 @@ keyrelease=function() releaseX=projections[#projections] end
 assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end))
 assert(cameraTurns>=3 and #projections>=3,'Aim must update throughout a fruit move')
 assert(releaseX==moving.Position.X,'Release must aim at the current NPC position')
+
+-- Optional fruit M1 clicks with aim, respects its interval, and sends no move key.
+clock=50
+S.fruitMasteryMoves={M1=true}
+local clicks,keyEvents=0,0
+mouse1click=function() clicks=clicks+1 end
+keypress=function() keyEvents=keyEvents+1 end
+keyrelease=function() keyEvents=keyEvents+1 end
+local turns=cameraTurns
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end))
+assert(clicks==1 and keyEvents==0 and cameraTurns>turns)
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==1)
+clock=51
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return false end) and clicks==1)
+assert(_TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==2)
+S.fruitMasteryMoves.M1=false;clock=52
+assert(not _TEST.castFruitMove(movingEnemy,moving,function() return true end) and clicks==2)
