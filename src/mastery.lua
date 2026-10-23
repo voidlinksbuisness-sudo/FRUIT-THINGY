@@ -173,11 +173,11 @@ do
                         return
                     end
                     setrobloxinput(true)
-                    if weapon=="Gun" then
+                    if weapon=="Gun" or weapon=="Melee" then
                         local target=enemy:FindFirstChild("Head") or part
-                        if not aim(target) then return end
+                        if not aim(target,weapon=="Melee") then return end
                         task.wait(0.02)
-                        if not active() or not isAlive(enemy) then return end
+                        if not active() or not isAlive(enemy) or attackWeapon(kind,enemy)~=weapon then return end
                     end
                     mouse1click()
                 end,kind=="Gun" and 0.15 or 0.06,{syncAttack=true,speed=S.MASTERY_TWEEN_SPEED})
