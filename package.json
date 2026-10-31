@@ -2,7 +2,7 @@
   "name": "fruit-thingy",
   "private": true,
   "scripts": {
-    "test": "node tests/integrity.cjs && node tests/loader.cjs && node tests/dropdown.cjs && node tests/chest.cjs && node tests/gui.cjs && node tests/mastery.cjs && node tests/pumpkin.cjs"
+    "test": "node tests/integrity.cjs && node tests/loader.cjs && node tests/dropdown.cjs && node tests/chest.cjs && node tests/gui.cjs && node tests/mastery.cjs && node tests/pumpkin.cjs && node tests/aura.cjs"
   },
   "devDependencies": {
     "fengari": "0.1.5"
