@@ -247,6 +247,12 @@ end)
 
 mainTab:AddSection("Games", { Column = 2 })
 
+mainTab:AddToggle("auto_pumpkin_farm", {
+    Text="Auto Pumpkin Farm", Description="M1s nearby pumpkins and fights spawned Jack o' Lantern enemies first",
+    Default=false,Column=2,
+    Callback=function(v) S.autoPumpkins=v end
+})
+
 mainTab:AddToggle("auto_raid", {
     Text="Auto Raid", Description="Tracks each raid island, travels 100 studs above it, then farms its enemies",
     Default=false, Keybind=true, Column=2,
