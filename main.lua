@@ -17,6 +17,7 @@ local modules = {
     "src/dungeon.lua",
     "src/fire-flowers.lua",
     "src/collection-and-farming.lua",
+    "src/pumpkin-farming.lua",
     "src/level-farming.lua",
     "src/esp-updates.lua",
     "src/pull-and-farm-loops.lua",
